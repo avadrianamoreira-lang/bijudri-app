@@ -1,8 +1,5 @@
 <!DOCTYPE html>
-const SUPABASE_URL = "https://kzlvxawotfnxjbnhysdx.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6bHZ4YXdvdGZueGpibmh5c2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDQ4MzYsImV4cCI6MjA5MTM4MDgzNn0.Kh5ugtSRLQXLbsM2JXz6KJEv85L5H64IStftuLNfNd8";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 <html lang="pt">
 <head>
   <meta charset="UTF-8">
@@ -27,7 +24,13 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
+
 <script>
+// Declare it once at the top level of your script
+const SUPABASE_URL = "https://kzlvxawotfnxjbnhysdx.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6bHZ4YXdvdGZueGpibmh5c2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDQ4MzYsImV4cCI6MjA5MTM4MDgzNn0.Kh5ugtSRLQXLbsM2JXz6KJEv85L5H64IStftuLNfNd8";
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // ESTADO GLOBAL
 let view = "home";
 let selectedCategory = "Todas";
@@ -54,7 +57,7 @@ function render() {
 
     app.innerHTML = `
       <header class="p-4 flex justify-between items-center bg-white shadow">
-        <img src="https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png" style="height:40px;">
+        <img src="https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png" style="height:100px;">
         <button onclick="goToCart()" class="relative">
           <i data-lucide="shopping-cart"></i>
           <span class="absolute -top-2 -right-2 bg-[#cfa05d] text-white text-xs px-2 rounded-full">
@@ -144,6 +147,7 @@ function goToCart() {
   render();
 }
 
+
 // INIT
 document.addEventListener("DOMContentLoaded", render);
 
@@ -189,6 +193,8 @@ async function calculateShipping(zone, weight) {
 
   return rule ? rule.price : 0;
 }
+
+
 
 </script>
 
