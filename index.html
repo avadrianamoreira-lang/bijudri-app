@@ -1,4 +1,8 @@
 <!DOCTYPE html>
+const SUPABASE_URL = "https://kzlvxawotfnxjbnhysdx.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6bHZ4YXdvdGZueGpibmh5c2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDQ4MzYsImV4cCI6MjA5MTM4MDgzNn0.Kh5ugtSRLQXLbsM2JXz6KJEv85L5H64IStftuLNfNd8";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 <html lang="pt">
 <head>
   <meta charset="UTF-8">
@@ -21,6 +25,8 @@
 
 <div id="app"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
 <script>
 // ESTADO GLOBAL
 let view = "home";
@@ -35,7 +41,7 @@ let products = [
   { id: "4", name: "Kit Costura", price: 25, category: "Kits", image: "https://via.placeholder.com/300" }
 ];
 
-const categories = ["Todas", "Bebé e criança", "Mulher", "Sustentáveis", "Kits"];
+const categories = ["Todas", "Destaques", "Bebé e criança", "Mulher", "Sustentáveis", "Kits"];
 
 // RENDER PRINCIPAL
 function render() {
@@ -140,6 +146,49 @@ function goToCart() {
 
 // INIT
 document.addEventListener("DOMContentLoaded", render);
+
+async function createOrder(customer, cart, total) {
+
+  const { data, error } = await supabase
+    .from("orders")
+    .insert({
+      customer_name: customer.name,
+      customer_email: customer.email,
+      total: total,
+      status: "pendente"
+    })
+    .select()
+    .single();
+
+  if (error) {
+    alert("Erro ao criar encomenda");
+    return;
+  }
+
+  const items = cart.map(item => ({
+    order_id: data.id,
+    product_name: item.name,
+    quantity: item.qty,
+    price: item.price
+  }));
+
+  await supabase.from("order_items").insert(items);
+
+  alert("Encomenda criada com sucesso!");
+}
+
+async function calculateShipping(zone, weight) {
+  const { data } = await supabase
+    .from("shipping_rules")
+    .select("*")
+    .eq("zone", zone);
+
+  const rule = data.find(r =>
+    weight >= r.min_weight && weight <= r.max_weight
+  );
+
+  return rule ? rule.price : 0;
+}
 
 </script>
 
