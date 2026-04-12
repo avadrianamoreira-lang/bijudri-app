@@ -16,7 +16,7 @@
     body {
       background-color: #f7f3ef;
       color: #575244;
-      font-family: futura;
+      font-family: montserrat, open sans;
     }
   </style>
 </head>
@@ -41,7 +41,9 @@ let products = [];
 let selectedProduct = null;
 let activeImage = 0;
 let cartMessage = "";
-let selectedFabric = null;
+let selectedExterior = null;
+let selectedLining = null;
+let fabrics = [];
 
 // PRODUTOS EXEMPLO (substituímos depois pelos teus reais)
 async function loadProducts() {
@@ -104,7 +106,26 @@ if (selectedCategory === "Todas") {
             </button>
           `).join("")}
         </div>
+${p.has_lining ? `
+  <h3 class="mt-4 font-semibold">Tecido de forro</h3>
 
+  <div class="grid grid-cols-4 gap-2 mt-2">
+    ${liningFabrics.map(f => `
+      <img src="${f.image_url}"
+        onclick="selectLining('${f.code}')"
+        class="w-full h-20 object-cover rounded cursor-pointer border 
+        ${selectedLining===f.code ? 'border-[#cfa05d]' : ''}">
+    `).join("")}
+
+    ${p.allow_waterproof_lining ? `
+      <div onclick="selectLining('impermeavel')"
+        class="flex items-center justify-center border rounded cursor-pointer 
+        ${selectedLining==='impermeavel' ? 'border-[#cfa05d]' : ''}">
+        Impermeável branco
+      </div>
+    ` : ""}
+  </div>
+` : ""}
         <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
           ${filtered.map(p => `
             <div class="bg-white p-2 rounded-xl shadow-sm hover:shadow-md transition">
@@ -114,6 +135,16 @@ if (selectedCategory === "Todas") {
 
   <h3 class="font-medium mt-1 text-xs leading-tight">${p.name}</h3>
 
+<h3 class="mt-4 font-semibold">Tecido exterior</h3>
+
+<div class="grid grid-cols-4 gap-2 mt-2">
+  ${outerFabrics.map(f => `
+    <img src="${f.image_url}"
+      onclick="selectExterior('${f.code}')"
+      class="w-full h-20 object-cover rounded cursor-pointer border 
+      ${selectedExterior===f.code ? 'border-[#cfa05d]' : ''}">
+  `).join("")}
+</div>
   <p class="text-[#cfa05d] font-bold text-sm">${p.price}€</p>
 
   <button onclick="viewProduct('${p.id}')"
@@ -186,6 +217,8 @@ if (view === "product") {
 <p class="text-xs mt-2">
   ${selectedFabric ? `Selecionado: ${selectedFabric}` : "Nenhum tecido selecionado"}
 </p>
+const outerFabrics = fabrics.filter(f => f.type === "outer");
+const liningFabrics = fabrics.filter(f => f.type === "lining");
         <button onclick="addToCart('${p.id}')"
           class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
           Adicionar ao carrinho
@@ -281,7 +314,10 @@ if (view === "checkout") {
         <div class="mt-4 font-bold">
           Total: ${cart.reduce((a,i)=>a+i.price*i.qty,0)}€
         </div>
-
+<p class="text-xs text-gray-500">
+  Ext: ${item.exterior} 
+  ${item.lining ? `| Forro: ${item.lining}` : ""}
+</p>
       <button onclick="goToCheckout()" class="mt-4 w-full bg-[#cfa05d] text-white py-3 rounded">
   Finalizar Encomenda
 </button>
@@ -313,13 +349,22 @@ function addToCart(id) {
   if (existing) {
     existing.qty++;
   } else {
-    cart.push({ 
-      ...product, 
-      qty: 1,
-      fabric: selectedFabric 
-    });
+    cart.push({
+  ...product,
+  qty: 1,
+  exterior: selectedExterior,
+  lining: selectedLining
+});
   }
+if (!selectedExterior) {
+  alert("Seleciona tecido exterior");
+  return;
+}
 
+if (selectedProduct.has_lining && !selectedLining) {
+  alert("Seleciona tecido de forro");
+  return;
+}
   cartMessage = "Adicionado ao carrinho ✅";
 
   setTimeout(() => {
@@ -343,6 +388,28 @@ function changeImage(index) {
   activeImage = index;
   render();
 }
+async function loadFabrics() {
+  const { data, error } = await window.supabaseClient
+    .from("fabrics")
+    .select("*");
+
+  if (error) {
+    console.error("Erro tecidos", error);
+    return;
+  }
+
+  fabrics = data || [];
+}
+function selectExterior(code) {
+  selectedExterior = code;
+  render();
+}
+
+function selectLining(code) {
+  selectedLining = code;
+  render();
+}
+
 function goToCheckout() {
   view = "checkout";
   render();
@@ -364,9 +431,13 @@ function selectFabric(code) {
   selectedFabric = code;
   render();
 }
+  
 // INIT
-document.addEventListener("DOMContentLoaded", loadProducts);
-
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadProducts();
+  await loadFabrics();
+});
+  
 async function createOrder(customer, cart, total) {
 
  const { data, error } = await window.supabaseClient
@@ -390,7 +461,8 @@ async function createOrder(customer, cart, total) {
   product_name: item.name,
   quantity: item.qty,
   price: item.price,
-  fabric: item.fabric
+  exterior: item.exterior,
+  lining: item.lining
 }));
 
   await window.supabaseClient.from("order_items").insert(items);
