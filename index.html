@@ -163,7 +163,7 @@ document.addEventListener("DOMContentLoaded", loadProducts);
 
 async function createOrder(customer, cart, total) {
 
-  const { data, error } = await supabase
+  const { data, error } = wait window.supabaseClient.
     .from("orders")
     .insert({
       customer_name: customer.name,
@@ -186,13 +186,13 @@ async function createOrder(customer, cart, total) {
     price: item.price
   }));
 
-  await supabase.from("order_items").insert(items);
+  await window.supabaseClient.from("order_items").insert(items);
 
   alert("Encomenda criada com sucesso!");
 }
 
 async function calculateShipping(zone, weight) {
-  const { data } = await supabase
+  const { data } = await window.supabaseClient
     .from("shipping_rules")
     .select("*")
     .eq("zone", zone);
