@@ -33,13 +33,15 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ESTADO GLOBAL
+// ESTADO/VARIÁVEL GLOBAL
 let view = "home";
 let selectedCategory = "Todas";
 let cart = [];
 let products = [];
 let selectedProduct = null;
 let activeImage = 0;
+let cartMessage = "";
+let selectedFabric = null;
 
 // PRODUTOS EXEMPLO (substituímos depois pelos teus reais)
 async function loadProducts() {
@@ -60,6 +62,12 @@ async function loadProducts() {
 }
 
 const categories = ["Todas", "Destaques", "Bebé e criança", "Mulher", "Sustentáveis", "Kits"];
+
+const fabrics = [
+  { code: "T1", image: "https://via.placeholder.com/100?text=T1" },
+  { code: "T2", image: "https://via.placeholder.com/100?text=T2" },
+  { code: "T3", image: "https://via.placeholder.com/100?text=T3" }
+];
 
 // RENDER PRINCIPAL
 function render() {
@@ -164,12 +172,25 @@ if (view === "product") {
           <p>Categoria: ${p.category || '-'}</p>
           <p>Stock: ${p.stock ?? '—'}</p>
       </div>  
+<h3 class="mt-4 font-semibold">Escolhe o tecido:</h3>
 
+<div class="grid grid-cols-4 gap-2 mt-2">
+  ${fabrics.map(f => `
+    <img src="${f.image}"
+      onclick="selectFabric('${f.code}')"
+      class="w-full h-20 object-cover rounded cursor-pointer border 
+      ${selectedFabric===f.code ? 'border-[#cfa05d]' : ''}">
+  `).join("")}
+</div>
+
+<p class="text-xs mt-2">
+  ${selectedFabric ? `Selecionado: ${selectedFabric}` : "Nenhum tecido selecionado"}
+</p>
         <button onclick="addToCart('${p.id}')"
           class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
           Adicionar ao carrinho
         </button>
-
+        ${cartMessage ? `<p class="text-green-600 text-sm mt-2">${cartMessage}</p>` : ""}
     </div>
   `;
 }
@@ -235,12 +256,27 @@ if (view === "checkout") {
 
         ${cart.length === 0 ? "<p>O carrinho está vazio</p>" : ""}
 
-        ${cart.map(item => `
-          <div class="bg-white p-3 mt-2 rounded flex justify-between">
-            <span>${item.name} x ${item.qty}</span>
-            <span>${item.price * item.qty}€</span>
-          </div>
-        `).join("")}
+       ${cart.map(item => `
+  <div class="bg-white p-3 mt-2 rounded flex gap-3 items-center">
+
+    <img src="${(item.image_url || '').split(',')[0]}" 
+         class="w-16 h-16 object-cover rounded">
+
+    <div class="flex-1">
+      <p class="text-sm font-semibold">${item.name}</p>
+      <p class="text-xs text-gray-500">Tecido: ${item.fabric}</p>
+
+      <div class="flex items-center gap-2 mt-1">
+        <button onclick="changeQty('${item.id}','${item.fabric}',-1)">-</button>
+        <span>${item.qty}</span>
+        <button onclick="changeQty('${item.id}','${item.fabric}',1)">+</button>
+      </div>
+    </div>
+
+    <span class="font-bold">${item.price * item.qty}€</span>
+
+  </div>
+`).join("")}
 
         <div class="mt-4 font-bold">
           Total: ${cart.reduce((a,i)=>a+i.price*i.qty,0)}€
@@ -264,13 +300,32 @@ function selectCategory(cat) {
 
 function addToCart(id) {
   const product = products.find(p => p.id === id);
-  const existing = cart.find(i => i.id === id);
+
+  const existing = cart.find(i => 
+    i.id === id && i.fabric === selectedFabric
+  );
+
+  if (!selectedFabric) {
+    alert("Seleciona um tecido primeiro");
+    return;
+  }
 
   if (existing) {
     existing.qty++;
   } else {
-    cart.push({ ...product, qty: 1 });
+    cart.push({ 
+      ...product, 
+      qty: 1,
+      fabric: selectedFabric 
+    });
   }
+
+  cartMessage = "Adicionado ao carrinho ✅";
+
+  setTimeout(() => {
+    cartMessage = "";
+    render();
+  }, 1500);
 
   render();
 }
@@ -290,6 +345,23 @@ function changeImage(index) {
 }
 function goToCheckout() {
   view = "checkout";
+  render();
+}
+function changeQty(id, fabric, delta) {
+  const item = cart.find(i => i.id === id && i.fabric === fabric);
+
+  if (!item) return;
+
+  item.qty += delta;
+
+  if (item.qty <= 0) {
+    cart = cart.filter(i => !(i.id === id && i.fabric === fabric));
+  }
+
+  render();
+}
+function selectFabric(code) {
+  selectedFabric = code;
   render();
 }
 // INIT
@@ -314,11 +386,12 @@ async function createOrder(customer, cart, total) {
   }
 
   const items = cart.map(item => ({
-    order_id: data.id,
-    product_name: item.name,
-    quantity: item.qty,
-    price: item.price
-  }));
+  order_id: data.id,
+  product_name: item.name,
+  quantity: item.qty,
+  price: item.price,
+  fabric: item.fabric
+}));
 
   await window.supabaseClient.from("order_items").insert(items);
 
