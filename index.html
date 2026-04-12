@@ -140,7 +140,7 @@ if (view === "product") {
         <div>
           <img src="${images[activeImage]}" 
                onerror="this.src='https://via.placeholder.com/500'"
-               class="w-full h-80 object-cover rounded-xl">
+               class="w-full h-180 object-cover rounded-xl">
         </div>
 
         <!-- MINIATURAS -->
@@ -148,7 +148,7 @@ if (view === "product") {
   ${images.map((img, index) => `
     <img src="${img}" 
          onclick="changeImage(${index})"
-         class="w-full h-20 object-cover rounded cursor-pointer border 
+         class="w-full h-60 object-cover rounded cursor-pointer border 
          ${activeImage===index ? 'border-[#cfa05d]' : 'border-transparent'} 
          hover:scale-105 transition">
   `).join("")}
