@@ -38,6 +38,7 @@ let view = "home";
 let selectedCategory = "Todas";
 let cart = [];
 let products = [];
+let selectedProduct = null;
 
 // PRODUTOS EXEMPLO (substituímos depois pelos teus reais)
 async function loadProducts() {
@@ -98,7 +99,7 @@ if (selectedCategory === "Todas") {
         <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
           ${filtered.map(p => `
             <div class="bg-white p-2 rounded-xl shadow-sm hover:shadow-md transition">
-  <img src="${p.image_url || ''}" 
+  <img src="${(p.image_url || '').split(',')[0]}" 
      onerror="this.src='https://via.placeholder.com/300x300?text=Sem+Imagem'"
      class="w-full h-60 object-cover rounded bg-gray-100">
 
@@ -106,17 +107,44 @@ if (selectedCategory === "Todas") {
 
   <p class="text-[#cfa05d] font-bold text-sm">${p.price}€</p>
 
-  <button onclick="addToCart('${p.id}')"
-    class="mt-1 w-full bg-[#575244] text-white py-1 text-xs rounded">
-    Adicionar
-  </button>
+  <button onclick="viewProduct('${p.id}')"
+  class="mt-1 w-full border border-[#575244] text-[#575244] py-1 text-xs rounded">
+  Ver produto
+</button>
+
+<button onclick="addToCart('${p.id}')"
+  class="mt-1 w-full bg-[#575244] text-white py-1 text-xs rounded">
+  Adicionar
+</button>
 </div>
           `).join("")}
         </div>
       </div>
     `;
   }
+if (view === "product") {
+  const p = selectedProduct;
 
+  app.innerHTML = `
+    <div class="p-4">
+      <button onclick="view='home';render()">← Voltar</button>
+
+      ${(p.image_url || '').split(',').map(img => `
+        <img src="${img}" 
+             onerror="this.src='https://via.placeholder.com/300x300?text=Sem+Imagem'"
+             class="w-full h-64 object-cover rounded mt-2">
+      `).join('')}
+
+      <h2 class="text-xl font-bold mt-4">${p.name}</h2>
+      <p class="text-[#cfa05d] text-lg font-bold">${p.price}€</p>
+
+      <button onclick="addToCart('${p.id}')"
+        class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
+        Adicionar ao carrinho
+      </button>
+    </div>
+  `;
+}
   if (view === "cart") {
     app.innerHTML = `
       <div class="p-4">
@@ -170,7 +198,11 @@ function goToCart() {
   view = "cart";
   render();
 }
-
+function viewProduct(id) {
+  selectedProduct = products.find(p => p.id === id);
+  view = "product";
+  render();
+}
 
 // INIT
 document.addEventListener("DOMContentLoaded", loadProducts);
