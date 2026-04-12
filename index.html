@@ -8,7 +8,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bijudri</title>
 
-  <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>  
+<script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
@@ -24,25 +25,34 @@
 
 <div id="app"></div>
 
-<script>
 
+
+<script>
 const SUPABASE_URL = "https://kzlvxawotfnxjbnhysdx.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6bHZ4YXdvdGZueGpibmh5c2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDQ4MzYsImV4cCI6MjA5MTM4MDgzNn0.Kh5ugtSRLQXLbsM2JXz6KJEv85L5H64IStftuLNfNd8";
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ESTADO GLOBAL
 let view = "home";
 let selectedCategory = "Todas";
 let cart = [];
+let products = [];
 
 // PRODUTOS EXEMPLO (substituímos depois pelos teus reais)
-let products = [
-  { id: "1", name: "Capa Livro Infantil", price: 18, category: "Bebé e criança", image: "https://via.placeholder.com/300" },
-  { id: "2", name: "Bolsa Mulher", price: 22, category: "Mulher", image: "https://via.placeholder.com/300" },
-  { id: "3", name: "Saco Reutilizável", price: 12, category: "Sustentáveis", image: "https://via.placeholder.com/300" },
-  { id: "4", name: "Kit Costura", price: 25, category: "Kits", image: "https://via.placeholder.com/300" }
-];
+async function loadProducts() {
+  const { data, error } = await supabase
+    .from("products")
+    .select("*");
+
+  if (error) {
+    console.error("Erro ao carregar produtos", error);
+    return;
+  }
+
+products = data;
+  render();
+}
 
 const categories = ["Todas", "Destaques", "Bebé e criança", "Mulher", "Sustentáveis", "Kits"];
 
@@ -149,7 +159,7 @@ function goToCart() {
 
 
 // INIT
-document.addEventListener("DOMContentLoaded", render);
+document.addEventListener("DOMContentLoaded", loadProducts);
 
 async function createOrder(customer, cart, total) {
 
