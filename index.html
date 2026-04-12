@@ -64,9 +64,18 @@ function render() {
   const app = document.getElementById("app");
 
   if (view === "home") {
-    const filtered = selectedCategory === "Todas"
-      ? products
-      : products.filter(p => p.category === selectedCategory);
+    let filtered;
+
+if (selectedCategory === "Todas") {
+  filtered = products;
+} else if (selectedCategory === "Destaques") {
+  filtered = products.filter(p => p.featured === true);
+} else {
+  filtered = products.filter(p => p.category === selectedCategory);
+}
+    ${selectedCategory===cat
+  ? 'bg-[#cfa05d] text-white shadow'
+  : 'bg-white'}
 
     app.innerHTML = `
       <header class="p-4 flex justify-between items-center bg-white shadow">
@@ -89,17 +98,22 @@ function render() {
           `).join("")}
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
           ${filtered.map(p => `
-            <div class="bg-white p-3 rounded-xl shadow">
-              <img src="${p.image}" class="w-full h-32 object-cover rounded">
-              <h3 class="font-semibold mt-2 text-sm">${p.name}</h3>
-              <p class="text-[#cfa05d] font-bold">${p.price}€</p>
-              <button onclick="addToCart('${p.id}')"
-                class="mt-2 w-full bg-[#575244] text-white py-2 rounded">
-                Adicionar
-              </button>
-            </div>
+            <div class="bg-white p-2 rounded-xl shadow-sm hover:shadow-md transition">
+  <img src="${p.image}" 
+     onerror="this.src='https://via.placeholder.com/300x300?text=Sem+Imagem'"
+     class="w-full h-24 object-cover rounded">
+
+  <h3 class="font-medium mt-1 text-xs leading-tight">${p.name}</h3>
+
+  <p class="text-[#cfa05d] font-bold text-sm">${p.price}€</p>
+
+  <button onclick="addToCart('${p.id}')"
+    class="mt-1 w-full bg-[#575244] text-white py-1 text-xs rounded">
+    Adicionar
+  </button>
+</div>
           `).join("")}
         </div>
       </div>
