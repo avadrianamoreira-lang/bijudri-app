@@ -5,7 +5,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=2.0">
   <title>Bijudri</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>  
@@ -16,7 +16,7 @@
     body {
       background-color: #f7f3ef;
       color: #575244;
-      font-family: bright-retro, futura;
+      font-family: futura;
     }
   </style>
 </head>
@@ -75,21 +75,21 @@ if (selectedCategory === "Todas") {
 }
 
     app.innerHTML = `
-      <header class="p-4 flex justify-between items-center bg-white shadow">
+      <header class="p-6 flex justify-between items-center bg-white shadow">
         <img src="https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png" style="height:100px;">
         <button onclick="goToCart()" class="relative">
           <i data-lucide="shopping-cart"></i>
-          <span class="absolute -top-2 -right-2 bg-[#cfa05d] text-white text-xs px-2 rounded-full">
+          <span class="absolute -top-4 -right-4 bg-[#cfa05d] text-white text-xs px-4 rounded-full">
             ${cart.reduce((a,i)=>a+i.qty,0)}
           </span>
         </button>
       </header>
 
-      <div class="p-4">
-        <div class="flex gap-2 overflow-x-auto mb-4">
+      <div class="p-6">
+        <div class="flex gap-2 overflow-x-auto mb-6">
           ${categories.map(cat => `
             <button onclick="selectCategory('${cat}')"
-              class="px-4 py-4 rounded-full border ${selectedCategory===cat?'bg-[#cfa05d] text-white':''}">
+              class="px-6 py-6 rounded-full border ${selectedCategory===cat?'bg-[#cfa05d] text-white':''}">
               ${cat}
             </button>
           `).join("")}
