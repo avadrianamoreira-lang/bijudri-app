@@ -73,9 +73,6 @@ if (selectedCategory === "Todas") {
 } else {
   filtered = products.filter(p => p.category === selectedCategory);
 }
-    ${selectedCategory===cat
-  ? 'bg-[#cfa05d] text-white shadow'
-  : 'bg-white'}
 
     app.innerHTML = `
       <header class="p-4 flex justify-between items-center bg-white shadow">
