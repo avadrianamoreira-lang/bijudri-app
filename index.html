@@ -163,16 +163,16 @@ document.addEventListener("DOMContentLoaded", loadProducts);
 
 async function createOrder(customer, cart, total) {
 
-  const { data, error } = wait window.supabaseClient.
-    .from("orders")
-    .insert({
-      customer_name: customer.name,
-      customer_email: customer.email,
-      total: total,
-      status: "pendente"
-    })
-    .select()
-    .single();
+ const { data, error } = await window.supabaseClient
+  .from("orders")
+  .insert({
+    customer_name: customer.name,
+    customer_email: customer.email,
+    total: total,
+    status: "pendente"
+  })
+  .select()
+  .single();
 
   if (error) {
     alert("Erro ao criar encomenda");
