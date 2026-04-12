@@ -89,7 +89,7 @@ if (selectedCategory === "Todas") {
         <div class="flex gap-2 overflow-x-auto mb-6">
           ${categories.map(cat => `
             <button onclick="selectCategory('${cat}')"
-              class="px-2 py-4 rounded-full border ${selectedCategory===cat?'bg-[#cfa05d] text-white':''}">
+              class="px-1 py-4 rounded-full border ${selectedCategory===cat?'bg-[#cfa05d] text-white':''}">
               ${cat}
             </button>
           `).join("")}
