@@ -45,12 +45,15 @@ async function loadProducts() {
     .from("products")
     .select("*");
 
+  console.log("DATA:", data);
+  console.log("ERROR:", error);
+
   if (error) {
-    console.error("Erro ao carregar produtos", error);
+    alert("Erro ao carregar produtos");
     return;
   }
 
-products = data;
+  products = data || [];
   render();
 }
 
