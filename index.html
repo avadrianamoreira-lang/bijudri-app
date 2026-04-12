@@ -40,7 +40,6 @@ let cart = [];
 let products = [];
 let selectedProduct = null;
 let activeImage = 0;
-let view = "checkout";
 
 // PRODUTOS EXEMPLO (substituímos depois pelos teus reais)
 async function loadProducts() {
@@ -141,7 +140,7 @@ if (view === "product") {
         <div>
           <img src="${images[activeImage]}" 
                onerror="this.src='https://via.placeholder.com/500'"
-               class="w-full h-100 object-cover rounded-xl">
+               class="w-full h-96 object-cover rounded-xl">
         </div>
 
         <!-- MINIATURAS -->
@@ -164,12 +163,12 @@ if (view === "product") {
         <div class="mt-3 text-xs text-gray-600">
           <p>Categoria: ${p.category || '-'}</p>
           <p>Stock: ${p.stock ?? '—'}</p>
-          
+      </div>  
+
         <button onclick="addToCart('${p.id}')"
           class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
           Adicionar ao carrinho
         </button>
-      </div>
 
     </div>
   `;
@@ -281,12 +280,7 @@ function goToCart() {
 }
 function viewProduct(id) {
   selectedProduct = products.find(p => p.id === id);
-  view = "product";
-  render();
-}
-function viewProduct(id) {
-  selectedProduct = products.find(p => p.id === id);
-  activeImage = 0; // 👈 começa sempre na primeira
+  activeImage = 0; 
   view = "product";
   render();
 }
