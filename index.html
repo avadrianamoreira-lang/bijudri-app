@@ -92,11 +92,12 @@ function renderHome(app) {
     filtered = products.filter(p => p.featured === true);
   } else {
     filtered = products.filter(p => p.category === selectedCategory);
+  
+    lucide.createIcons();
   }
 
   app.innerHTML = `
   ${renderHeader()}
-    <header class="p-6 flex justify-between items-center bg-white shadow">
       <img src="https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png" style="height:100px;">
       <button onclick="goToCart()" class="relative">
         <i data-lucide="shopping-cart"></i>
@@ -174,6 +175,7 @@ function renderHeader() {
 
     </header>
   `;
+  lucide.createIcons();
 }  
   
 function renderProduct(app) {
@@ -188,6 +190,8 @@ function renderProduct(app) {
   const outerFabrics = fabrics.filter(f => f.type === "outer");
   const liningFabrics = fabrics.filter(f => f.type === "lining");
 
+  lucide.createIcons();
+  
   app.innerHTML = `
   ${renderHeader()}
     <div class="p-4">
@@ -254,7 +258,6 @@ ${p.has_lining ? `
     `).join("") : "<p class='text-xs text-gray-500'>Sem forros disponíveis</p>"}
   </div>
 ` : ""}
-          ` : ""}
 
           <button onclick="addToCart('${p.id}')"
             class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
@@ -289,6 +292,7 @@ function renderCart(app) {
       `).join("")}
     </div>
   `;
+  lucide.createIcons();
 }
   
 function renderCheckout(app) {
@@ -322,6 +326,7 @@ function renderCheckout(app) {
   setTimeout(() => {
     renderShippingOptions();
   }, 100);
+  lucide.createIcons();
 }
 
 async function renderShippingOptions() {
@@ -341,6 +346,7 @@ async function renderShippingOptions() {
       </span>
     </label>
   `).join("");
+  lucide.createIcons();
 }
 
 function selectShipping(method) {
@@ -351,6 +357,7 @@ function selectShipping(method) {
   } else {
     document.getElementById("inpost_address").classList.add("hidden");
   }
+  lucide.createIcons();
 }
 
 // FUNÇÕES
@@ -425,10 +432,9 @@ async function loadFabrics() {
     console.error("Erro tecidos", error);
     return;
   }
-
+console.log("FABRICS:", data);
   fabrics = data || [];
 }
-  console.log("FABRICS:", data);
   
 function selectExterior(code) {
   selectedExterior = code;
@@ -557,20 +563,6 @@ async function calculateShippingOptions() {
       delivery_time: rule ? rule.delivery_time : "-"
     };
   });
-}
-
-async function updateShipping() {
-  const zone = document.getElementById("zone").value;
-
-  if (!zone) return;
-
-  const weight = cart.reduce((a,i)=>a+i.qty,0); // simplificado
-
-  const total = cart.reduce((a,i)=>a+i.price*i.qty,0);
-  const final = total + shipping;
-
-  document.getElementById("shipping").innerText = "Envio: " + shipping + "€";
-  document.getElementById("finalTotal").innerText = "Total Final: " + final + "€";
 }
 
 async function submitOrder() {
