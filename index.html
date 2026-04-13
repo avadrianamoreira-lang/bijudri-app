@@ -141,7 +141,12 @@ if (selectedCategory === "Todas") {
     `;
   }
 if (view === "product") {
-  if (!selectedProduct) return;
+  if (!selectedProduct) {
+  view = "home";
+  render();
+  return;
+}
+  const p = selectedProduct;
   const images = (p.image_url || '').split(',');
 
   const outerFabrics = fabrics.filter(f => f.type === "outer");
@@ -282,13 +287,11 @@ if (view === "checkout") {
   Ext: ${item.exterior} 
   ${item.lining ? `| Forro: ${item.lining}` : ""}
 </p>
-      <div class="flex items-center gap-2 mt-1">
-        <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',-1)">-</button>
-        </div>
-
-    <span class="font-bold">${item.price * item.qty}€</span>
-
-  </div>
+     <div class="flex items-center gap-2 mt-1">
+  <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',-1)">-</button>
+  <span>${item.qty}</span>
+  <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',1)">+</button>
+</div>
 `).join("")}
 
         <div class="mt-4 font-bold">
@@ -358,8 +361,8 @@ function goToCart() {
   view = "cart";
   render();
 }
-function viewProduct(id) {
-  selectedProduct = products.find(p => p.id === id);
+  function viewProduct(id) {
+  selectedProduct = products.find(p => String(p.id) === String(id));
   activeImage = 0; 
   view = "product";
   render();
