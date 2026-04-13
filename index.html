@@ -68,84 +68,87 @@ const categories = ["Todas", "Destaques", "Bebé e criança", "Mulher", "Sustent
 // RENDER PRINCIPAL
 function render() {
   const app = document.getElementById("app");
+
   if (!products.length) {
-  app.innerHTML = "<p class='p-4'>A carregar produtos...</p>";
-  return;
-}
-
-  if (view === "home") {
-    let filtered;
-const outerFabrics = fabrics.filter(f => f.type === "outer");
-if (selectedCategory === "Todas") {
-  filtered = products;
-} else if (selectedCategory === "Destaques") {
-  filtered = products.filter(p => p.featured === true);
-} else {
-  filtered = products.filter(p => p.category === selectedCategory);
-}
-
-    app.innerHTML = `
-      <header class="p-6 flex justify-between items-center bg-white shadow">
-        <img src="https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png" style="height:100px;">
-        <button onclick="goToCart()" class="relative">
-          <i data-lucide="shopping-cart"></i>
-          <span class="absolute -top-4 -right-4 bg-[#cfa05d] text-white text-xs px-4 rounded-full">
-            ${cart.reduce((a,i)=>a+i.qty,0)}
-          </span>
-        </button>
-      </header>
-
-      <div class="p-4">
-        <div class="flex gap-2 overflow-x-auto mb-6">
-          ${categories.map(cat => `
-            <button onclick="selectCategory('${cat}')"
-              class="px-1 py-4 rounded-full border ${selectedCategory===cat?'bg-[#cfa05d] text-white':''}">
-              ${cat}
-            </button>
-          `).join("")}
-        </div>
-        <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          ${filtered.map(p => `
-            <div class="bg-white p-2 rounded-xl shadow-sm hover:shadow-md transition">
-  <img src="${(p.image_url || '').split(',')[0]}" 
-     onerror="this.src='https://via.placeholder.com/300x300?text=Sem+Imagem'"
-     class="w-full h-60 object-cover rounded bg-gray-100">
-
-  <h3 class="font-medium mt-1 text-xs leading-tight">${p.name}</h3>
-
-<h3 class="mt-4 font-semibold">Tecido exterior</h3>
-
-<div class="grid grid-cols-4 gap-2 mt-2">
-  ${outerFabrics.map(f => `
-    <img src="${f.image_url}"
-      onclick="selectExterior('${f.code}')"
-      class="w-full h-20 object-cover rounded cursor-pointer border 
-      ${selectedExterior===f.code ? 'border-[#cfa05d]' : ''}">
-  `).join("")}
-</div>
-  <p class="text-[#cfa05d] font-bold text-sm">${p.price}€</p>
-
-  <button onclick="viewProduct('${p.id}')"
-  class="mt-1 w-full border border-[#575244] text-[#575244] py-1 text-xs rounded">
-  Ver produto
-</button>
-
-<button onclick="addToCart('${p.id}')"
-  class="mt-1 w-full bg-[#575244] text-white py-1 text-xs rounded">
-  Adicionar ao carrinho
-</button>
-</div>
-          `).join("")}
-        </div>
-      </div>
-    `;
+    app.innerHTML = "<p class='p-4'>A carregar produtos...</p>";
+    return;
   }
-if (view === "product") {
-  if (!selectedProduct) {
-  view = "home";
-  render();
-  return;
+
+  if (view === "home") return renderHome(app);
+  if (view === "product") return renderProduct(app);
+  if (view === "cart") return renderCart(app);
+  if (view === "checkout") return renderCheckout(app);
+
+  lucide.createIcons();
 }
+function renderHome(app) {
+  let filtered;
+  const outerFabrics = fabrics.filter(f => f.type === "outer");
+
+  if (selectedCategory === "Todas") {
+    filtered = products;
+  } else if (selectedCategory === "Destaques") {
+    filtered = products.filter(p => p.featured === true);
+  } else {
+    filtered = products.filter(p => p.category === selectedCategory);
+  }
+
+  app.innerHTML = `
+    <header class="p-6 flex justify-between items-center bg-white shadow">
+      <img src="https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png" style="height:100px;">
+      <button onclick="goToCart()" class="relative">
+        <i data-lucide="shopping-cart"></i>
+        <span class="absolute -top-4 -right-4 bg-[#cfa05d] text-white text-xs px-4 rounded-full">
+          ${cart.reduce((a,i)=>a+i.qty,0)}
+        </span>
+      </button>
+    </header>
+
+    <div class="p-4">
+      <div class="flex gap-2 overflow-x-auto mb-6">
+        ${categories.map(cat => `
+          <button onclick="selectCategory('${cat}')"
+            class="px-1 py-4 rounded-full border ${selectedCategory===cat?'bg-[#cfa05d] text-white':''}">
+            ${cat}
+          </button>
+        `).join("")}
+      </div>
+
+      <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        ${filtered.map(p => `
+          <div class="bg-white p-2 rounded-xl shadow-sm">
+            <img src="${(p.image_url || '').split(',')[0]}" 
+              class="w-full h-60 object-cover rounded">
+
+            <h3 class="text-xs">${p.name}</h3>
+
+            <div class="grid grid-cols-4 gap-2 mt-2">
+              ${outerFabrics.map(f => `
+                <img src="${f.image_url}"
+                  onclick="selectExterior('${f.code}')"
+                  class="h-16 border ${selectedExterior===f.code ? 'border-[#cfa05d]' : ''}">
+              `).join("")}
+            </div>
+
+            <p>${p.price}€</p>
+
+            <button onclick="viewProduct('${p.id}')">Ver produto</button>
+            <button onclick="addToCart('${p.id}')">Adicionar</button>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  lucide.createIcons();
+}
+
+function renderProduct(app) {
+  if (!selectedProduct) {
+    view = "home";
+    return render();
+  }
+
   const p = selectedProduct;
   const images = (p.image_url || '').split(',');
 
@@ -157,156 +160,70 @@ if (view === "product") {
 
       <button onclick="view='home';render()">← Voltar</button>
 
-      <h1 class="text-xl font-bold mt-2">${p.name}</h1>
+      <h1>${p.name}</h1>
 
-      <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <img src="${images[0]}" class="w-full h-60 object-cover">
 
-        <div>
-          <img src="${images[activeImage]}" 
-               onerror="this.src='https://via.placeholder.com/500'"
-               class="w-full h-[600px] object-cover rounded-xl">
-        </div>
+      <p>${p.price}€</p>
 
-        <div>
-          <div class="grid grid-cols-4 gap-2">
-            ${images.map((img, index) => `
-              <img src="${img}" 
-                   onclick="changeImage(${index})"
-                   class="w-full h-20 object-cover rounded cursor-pointer border 
-                   ${activeImage===index ? 'border-[#cfa05d]' : 'border-transparent'}">
-            `).join("")}
-          </div>
+      <h3>Exterior</h3>
+      ${outerFabrics.map(f => `
+        <img src="${f.image_url}"
+          onclick="selectExterior('${f.code}')"
+          class="h-16 border ${selectedExterior===f.code ? 'border-[#cfa05d]' : ''}">
+      `).join("")}
 
-          <p class="text-[#cfa05d] text-lg font-bold mt-4">${p.price}€</p>
+      ${p.has_lining ? `
+        <h3>Forro</h3>
+        ${liningFabrics.map(f => `
+          <img src="${f.image_url}"
+            onclick="selectLining('${f.code}')"
+            class="h-16 border ${selectedLining===f.code ? 'border-[#cfa05d]' : ''}">
+        `).join("")}
+      ` : ""}
 
-          <p class="mt-2 text-sm">${p.description || ''}</p>
+      <button onclick="addToCart('${p.id}')">Adicionar</button>
 
-          <h3 class="mt-4 font-semibold">Tecido exterior</h3>
-          <div class="grid grid-cols-4 gap-2 mt-2">
-            ${outerFabrics.map(f => `
-              <img src="${f.image_url}"
-                onclick="selectExterior('${f.code}')"
-                class="w-full h-20 object-cover rounded cursor-pointer border 
-                ${selectedExterior===f.code ? 'border-[#cfa05d]' : ''}">
-            `).join("")}
-          </div>
-
-          ${p.has_lining ? `
-            <h3 class="mt-4 font-semibold">Tecido de forro</h3>
-            <div class="grid grid-cols-4 gap-2 mt-2">
-              ${liningFabrics.map(f => `
-                <img src="${f.image_url}"
-                  onclick="selectLining('${f.code}')"
-                  class="w-full h-20 object-cover rounded cursor-pointer border 
-                  ${selectedLining===f.code ? 'border-[#cfa05d]' : ''}">
-              `).join("")}
-            </div>
-          ` : ""}
-
-          <button onclick="addToCart('${p.id}')"
-            class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
-            Adicionar ao carrinho
-          </button>
-
-        </div>
-      </div>
     </div>
   `;
 }
-if (view === "checkout") {
 
+function renderCart(app) {
   app.innerHTML = `
     <div class="p-4">
+      <button onclick="view='home';render()">←</button>
 
-      <button onclick="view='cart';render()">← Voltar</button>
+      ${cart.map(item => `
+        <div>
+          ${item.name} x ${item.qty}
+          <br>
+          Ext: ${item.exterior}
+          ${item.lining ? `| Forro: ${item.lining}` : ""}
 
-      <h2 class="text-xl font-bold mt-2">Checkout</h2>
-
-      <!-- FORMULÁRIO -->
-      <div class="mt-4 space-y-3">
-        <input id="name" placeholder="Nome" class="w-full p-2 border rounded">
-        <input id="email" placeholder="Email" class="w-full p-2 border rounded">
-        
-        <select id="zone" onchange="updateShipping()" class="w-full p-2 border rounded">
-  <option value="">Zona de envio</option>
-  <option value="Portugal">Portugal</option>
-  <option value="Ilhas">Ilhas</option>
-</select>
-      </div>
-
-      <!-- RESUMO -->
-      <div class="mt-6">
-        <h3 class="font-bold">Resumo</h3>
-
-        ${cart.map(item => `
-          <div class="flex justify-between text-sm mt-1">
-            <span>${item.name} x ${item.qty}</span>
-            <span>${item.price * item.qty}€</span>
+          <div>
+            <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',-1)">-</button>
+            <span>${item.qty}</span>
+            <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',1)">+</button>
           </div>
-        `).join("")}
-
-        <div class="mt-2 font-bold">
-          Total: ${cart.reduce((a,i)=>a+i.price*i.qty,0)}€
         </div>
-
-        <div id="shipping" class="mt-2 text-sm text-gray-600">
-          Envio: —
-        </div>
-
-        <div id="finalTotal" class="mt-2 font-bold">
-          Total Final: —
-        </div>
-      </div>
-
-      <button onclick="submitOrder()" 
-        class="mt-6 w-full bg-[#575244] text-white py-3 rounded">
-        Confirmar Encomenda
-      </button>
-
+      `).join("")}
     </div>
   `;
 }
-  if (view === "cart") {
-    app.innerHTML = `
-      <div class="p-4">
-        <button onclick="view='home';render()">← Voltar</button>
+  
+function renderCheckout(app) {
+  app.innerHTML = `
+    <div class="p-4">
+      <button onclick="view='cart';render()">←</button>
 
-        <h2 class="text-xl font-bold mt-2">Carrinho</h2>
+      <input id="name" placeholder="Nome">
+      <input id="email" placeholder="Email">
 
-        ${cart.length === 0 ? "<p>O carrinho está vazio</p>" : ""}
+      <select id="zone" onchange="updateShipping()">
+        <option value="">Zona</option>
+        <option value="Portugal">
 
-       ${cart.map(item => `
-  <div class="bg-white p-3 mt-2 rounded flex gap-3 items-center">
 
-    <img src="${(item.image_url || '').split(',')[0]}" 
-         class="w-16 h-16 object-cover rounded">
-
-    <div class="flex-1">
-      <p class="text-sm font-semibold">${item.name}</p>
-      <p class="text-xs text-gray-500">
-  Ext: ${item.exterior} 
-  ${item.lining ? `| Forro: ${item.lining}` : ""}
-</p>
-     <div class="flex items-center gap-2 mt-1">
-  <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',-1)">-</button>
-  <span>${item.qty}</span>
-  <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',1)">+</button>
-</div>
-`).join("")}
-
-        <div class="mt-4 font-bold">
-          Total: ${cart.reduce((a,i)=>a+i.price*i.qty,0)}€
-        </div>
-
-      <button onclick="goToCheckout()" class="mt-4 w-full bg-[#cfa05d] text-white py-3 rounded">
-  Finalizar Encomenda
-</button>
-      </div>
-    `;
-  }
-
-  lucide.createIcons();
-}
 
 // FUNÇÕES
 function selectCategory(cat) {
