@@ -68,6 +68,10 @@ const categories = ["Todas", "Destaques", "Bebé e criança", "Mulher", "Sustent
 // RENDER PRINCIPAL
 function render() {
   const app = document.getElementById("app");
+  if (!products.length) {
+  app.innerHTML = "<p class='p-4'>A carregar produtos...</p>";
+  return;
+}
 
   if (view === "home") {
     let filtered;
@@ -136,34 +140,13 @@ if (selectedCategory === "Todas") {
       </div>
     `;
   }
-iif (view === "product") {
-  const p = selectedProduct;
+if (view === "product") {
+  if (!selectedProduct) return;
   const images = (p.image_url || '').split(',');
 
   const outerFabrics = fabrics.filter(f => f.type === "outer");
   const liningFabrics = fabrics.filter(f => f.type === "lining");
 
-  app.innerHTML = `
-${p.has_lining ? `
-  <h3 class="mt-4 font-semibold">Tecido de forro</h3>
-
-  <div class="grid grid-cols-4 gap-2 mt-2">
-    ${liningFabrics.map(f => `
-      <img src="${f.image_url}"
-        onclick="selectLining('${f.code}')"
-        class="w-full h-20 object-cover rounded cursor-pointer border 
-        ${selectedLining===f.code ? 'border-[#cfa05d]' : ''}">
-    `).join("")}
-
-    ${p.allow_waterproof_lining ? `
-      <div onclick="selectLining('impermeavel')"
-        class="flex items-center justify-center border rounded cursor-pointer 
-        ${selectedLining==='impermeavel' ? 'border-[#cfa05d]' : ''}">
-        Impermeável branco
-      </div>
-    ` : ""}
-  </div>
-` : ""}
   app.innerHTML = `
     <div class="p-4">
 
@@ -173,53 +156,55 @@ ${p.has_lining ? `
 
       <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        <!-- IMAGEM PRINCIPAL -->
         <div>
           <img src="${images[activeImage]}" 
                onerror="this.src='https://via.placeholder.com/500'"
                class="w-full h-[600px] object-cover rounded-xl">
         </div>
 
-        <!-- MINIATURAS -->
-<div class="grid grid-cols-4 gap-2">
-  ${images.map((img, index) => `
-    <img src="${img}" 
-         onclick="changeImage(${index})"
-         class="w-full h-60 object-cover rounded cursor-pointer border 
-         ${activeImage===index ? 'border-[#cfa05d]' : 'border-transparent'} 
-         hover:scale-105 transition">
-  `).join("")}
-</div>
+        <div>
+          <div class="grid grid-cols-4 gap-2">
+            ${images.map((img, index) => `
+              <img src="${img}" 
+                   onclick="changeImage(${index})"
+                   class="w-full h-20 object-cover rounded cursor-pointer border 
+                   ${activeImage===index ? 'border-[#cfa05d]' : 'border-transparent'}">
+            `).join("")}
+          </div>
 
-      <!-- INFO PRODUTO -->
-      <div class="mt-6">
-        <p class="text-[#cfa05d] text-lg font-bold">${p.price}€</p>
+          <p class="text-[#cfa05d] text-lg font-bold mt-4">${p.price}€</p>
 
-        <p class="mt-2 text-sm">${p.description || ''}</p>
+          <p class="mt-2 text-sm">${p.description || ''}</p>
 
-        <div class="mt-3 text-xs text-gray-600">
-          <p>Categoria: ${p.category || '-'}</p>
-          <p>Stock: ${p.stock ?? '—'}</p>
-      </div>  
-<h3 class="mt-4 font-semibold">Escolhe o tecido:</h3>
+          <h3 class="mt-4 font-semibold">Tecido exterior</h3>
+          <div class="grid grid-cols-4 gap-2 mt-2">
+            ${outerFabrics.map(f => `
+              <img src="${f.image_url}"
+                onclick="selectExterior('${f.code}')"
+                class="w-full h-20 object-cover rounded cursor-pointer border 
+                ${selectedExterior===f.code ? 'border-[#cfa05d]' : ''}">
+            `).join("")}
+          </div>
 
-<div class="grid grid-cols-4 gap-2 mt-2">
-  ${fabrics.map(f => `
-    <img src="${f.image_url}"
-      onclick="selectFabric('${f.code}')"
-      class="w-full h-20 object-cover rounded cursor-pointer border 
-      ${selectedFabric===f.code ? 'border-[#cfa05d]' : ''}">
-  `).join("")}
-</div>
+          ${p.has_lining ? `
+            <h3 class="mt-4 font-semibold">Tecido de forro</h3>
+            <div class="grid grid-cols-4 gap-2 mt-2">
+              ${liningFabrics.map(f => `
+                <img src="${f.image_url}"
+                  onclick="selectLining('${f.code}')"
+                  class="w-full h-20 object-cover rounded cursor-pointer border 
+                  ${selectedLining===f.code ? 'border-[#cfa05d]' : ''}">
+              `).join("")}
+            </div>
+          ` : ""}
 
-<p class="text-xs mt-2">
-  ${selectedFabric ? `Selecionado: ${selectedFabric}` : "Nenhum tecido selecionado"}
-</p>
-        <button onclick="addToCart('${p.id}')"
-          class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
-          Adicionar ao carrinho
-        </button>
-        ${cartMessage ? `<p class="text-green-600 text-sm mt-2">${cartMessage}</p>` : ""}
+          <button onclick="addToCart('${p.id}')"
+            class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
+            Adicionar ao carrinho
+          </button>
+
+        </div>
+      </div>
     </div>
   `;
 }
@@ -293,17 +278,13 @@ if (view === "checkout") {
 
     <div class="flex-1">
       <p class="text-sm font-semibold">${item.name}</p>
-      <p class="text-xs text-gray-500">Tecido: ${item.fabric}</p>
-<p class="text-xs text-gray-500">
+      <p class="text-xs text-gray-500">
   Ext: ${item.exterior} 
   ${item.lining ? `| Forro: ${item.lining}` : ""}
 </p>
       <div class="flex items-center gap-2 mt-1">
         <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',-1)">-</button>
-        <span>${item.qty}</span>
-        <button onclick="changeQty('${item.id}','${item.fabric}',1)">+</button>
-      </div>
-    </div>
+        </div>
 
     <span class="font-bold">${item.price * item.qty}€</span>
 
