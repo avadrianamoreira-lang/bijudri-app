@@ -41,6 +41,7 @@ let products = [];
 let selectedProduct = null;
 let activeImage = 0;
 let cartMessage = "";
+let selectedFabric = null;
 let selectedExterior = null;
 let selectedLining = null;
 let fabrics = [];
@@ -100,26 +101,6 @@ if (selectedCategory === "Todas") {
             </button>
           `).join("")}
         </div>
-${p.has_lining ? `
-  <h3 class="mt-4 font-semibold">Tecido de forro</h3>
-
-  <div class="grid grid-cols-4 gap-2 mt-2">
-    ${liningFabrics.map(f => `
-      <img src="${f.image_url}"
-        onclick="selectLining('${f.code}')"
-        class="w-full h-20 object-cover rounded cursor-pointer border 
-        ${selectedLining===f.code ? 'border-[#cfa05d]' : ''}">
-    `).join("")}
-
-    ${p.allow_waterproof_lining ? `
-      <div onclick="selectLining('impermeavel')"
-        class="flex items-center justify-center border rounded cursor-pointer 
-        ${selectedLining==='impermeavel' ? 'border-[#cfa05d]' : ''}">
-        Impermeável branco
-      </div>
-    ` : ""}
-  </div>
-` : ""}
         <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
           ${filtered.map(p => `
             <div class="bg-white p-2 rounded-xl shadow-sm hover:shadow-md transition">
@@ -157,9 +138,28 @@ ${p.has_lining ? `
     `;
   }
 if (view === "product") {
-  const p = selectedProduct;
-  const images = (p.image_url || '').split(',');
+const outerFabrics = fabrics.filter(f => f.type === "outer");
+const liningFabrics = fabrics.filter(f => f.type === "lining");
+${p.has_lining ? `
+  <h3 class="mt-4 font-semibold">Tecido de forro</h3>
 
+  <div class="grid grid-cols-4 gap-2 mt-2">
+    ${liningFabrics.map(f => `
+      <img src="${f.image_url}"
+        onclick="selectLining('${f.code}')"
+        class="w-full h-20 object-cover rounded cursor-pointer border 
+        ${selectedLining===f.code ? 'border-[#cfa05d]' : ''}">
+    `).join("")}
+
+    ${p.allow_waterproof_lining ? `
+      <div onclick="selectLining('impermeavel')"
+        class="flex items-center justify-center border rounded cursor-pointer 
+        ${selectedLining==='impermeavel' ? 'border-[#cfa05d]' : ''}">
+        Impermeável branco
+      </div>
+    ` : ""}
+  </div>
+` : ""}
   app.innerHTML = `
     <div class="p-4">
 
@@ -211,8 +211,6 @@ if (view === "product") {
 <p class="text-xs mt-2">
   ${selectedFabric ? `Selecionado: ${selectedFabric}` : "Nenhum tecido selecionado"}
 </p>
-const outerFabrics = fabrics.filter(f => f.type === "outer");
-const liningFabrics = fabrics.filter(f => f.type === "lining");
         <button onclick="addToCart('${p.id}')"
           class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
           Adicionar ao carrinho
@@ -292,7 +290,10 @@ if (view === "checkout") {
     <div class="flex-1">
       <p class="text-sm font-semibold">${item.name}</p>
       <p class="text-xs text-gray-500">Tecido: ${item.fabric}</p>
-
+<p class="text-xs text-gray-500">
+  Ext: ${item.exterior} 
+  ${item.lining ? `| Forro: ${item.lining}` : ""}
+</p>
       <div class="flex items-center gap-2 mt-1">
         <button onclick="changeQty('${item.id}','${item.fabric}',-1)">-</button>
         <span>${item.qty}</span>
@@ -308,10 +309,7 @@ if (view === "checkout") {
         <div class="mt-4 font-bold">
           Total: ${cart.reduce((a,i)=>a+i.price*i.qty,0)}€
         </div>
-<p class="text-xs text-gray-500">
-  Ext: ${item.exterior} 
-  ${item.lining ? `| Forro: ${item.lining}` : ""}
-</p>
+
       <button onclick="goToCheckout()" class="mt-4 w-full bg-[#cfa05d] text-white py-3 rounded">
   Finalizar Encomenda
 </button>
@@ -330,26 +328,20 @@ function selectCategory(cat) {
 
 function addToCart(id) {
   const product = products.find(p => p.id === id);
-
-  const existing = cart.find(i => 
-    i.id === id && i.fabric === selectedFabric
-  );
-
-  if (!selectedFabric) {
-    alert("Seleciona um tecido primeiro");
-    return;
-  }
-
   if (existing) {
     existing.qty++;
   } else {
     cart.push({
-  ...product,
+  id,
+  name,
+  price,
   qty: 1,
-  exterior: selectedExterior,
-  lining: selectedLining
-});
+  fabric: {
+    exterior: selectedExterior,
+    lining: selectedLining,
+    main: selectedFabric
   }
+});
 if (!selectedExterior) {
   alert("Seleciona tecido exterior");
   return;
@@ -359,6 +351,9 @@ if (selectedProduct.has_lining && !selectedLining) {
   alert("Seleciona tecido de forro");
   return;
 }
+  const existing = cart.find(i => 
+    i.id === id && i.fabric === selectedFabric
+  );
   cartMessage = "Adicionado ao carrinho ✅";
 
   setTimeout(() => {
@@ -430,6 +425,7 @@ function selectFabric(code) {
 document.addEventListener("DOMContentLoaded", async () => {
   await loadProducts();
   await loadFabrics();
+  render();
 });
   
 async function createOrder(customer, cart, total) {
@@ -470,7 +466,7 @@ async function calculateShipping(zone, weight) {
     .select("*")
     .eq("zone", zone);
 
-  const rule = data.find(r =>
+  const rule = (data || []).find(r =>
     weight >= r.min_weight && weight <= r.max_weight
   );
 
