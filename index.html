@@ -61,7 +61,6 @@ async function loadProducts() {
   }
 
   products = data || [];
-  render();
 }
 
 const categories = ["Todas", "Destaques", "Bebé e criança", "Mulher", "Sustentáveis", "Kits"];
@@ -72,7 +71,7 @@ function render() {
 
   if (view === "home") {
     let filtered;
-
+const outerFabrics = fabrics.filter(f => f.type === "outer");
 if (selectedCategory === "Todas") {
   filtered = products;
 } else if (selectedCategory === "Destaques") {
@@ -137,9 +136,14 @@ if (selectedCategory === "Todas") {
       </div>
     `;
   }
-if (view === "product") {
-const outerFabrics = fabrics.filter(f => f.type === "outer");
-const liningFabrics = fabrics.filter(f => f.type === "lining");
+iif (view === "product") {
+  const p = selectedProduct;
+  const images = (p.image_url || '').split(',');
+
+  const outerFabrics = fabrics.filter(f => f.type === "outer");
+  const liningFabrics = fabrics.filter(f => f.type === "lining");
+
+  app.innerHTML = `
 ${p.has_lining ? `
   <h3 class="mt-4 font-semibold">Tecido de forro</h3>
 
@@ -201,7 +205,7 @@ ${p.has_lining ? `
 
 <div class="grid grid-cols-4 gap-2 mt-2">
   ${fabrics.map(f => `
-    <img src="${f.image}"
+    <img src="${f.image_url}"
       onclick="selectFabric('${f.code}')"
       class="w-full h-20 object-cover rounded cursor-pointer border 
       ${selectedFabric===f.code ? 'border-[#cfa05d]' : ''}">
@@ -295,7 +299,7 @@ if (view === "checkout") {
   ${item.lining ? `| Forro: ${item.lining}` : ""}
 </p>
       <div class="flex items-center gap-2 mt-1">
-        <button onclick="changeQty('${item.id}','${item.fabric}',-1)">-</button>
+        <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',-1)">-</button>
         <span>${item.qty}</span>
         <button onclick="changeQty('${item.id}','${item.fabric}',1)">+</button>
       </div>
@@ -328,32 +332,37 @@ function selectCategory(cat) {
 
 function addToCart(id) {
   const product = products.find(p => p.id === id);
+
+  if (!selectedExterior) {
+    alert("Seleciona tecido exterior");
+    return;
+  }
+
+  if (product.has_lining && !selectedLining) {
+    alert("Seleciona tecido de forro");
+    return;
+  }
+
+  const existing = cart.find(i => 
+    i.id === id &&
+    i.exterior === selectedExterior &&
+    i.lining === selectedLining
+  );
+
   if (existing) {
     existing.qty++;
   } else {
     cart.push({
-  id,
-  name,
-  price,
-  qty: 1,
-  fabric: {
-    exterior: selectedExterior,
-    lining: selectedLining,
-    main: selectedFabric
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image_url: product.image_url,
+      qty: 1,
+      exterior: selectedExterior,
+      lining: selectedLining
+    });
   }
-});
-if (!selectedExterior) {
-  alert("Seleciona tecido exterior");
-  return;
-}
 
-if (selectedProduct.has_lining && !selectedLining) {
-  alert("Seleciona tecido de forro");
-  return;
-}
-  const existing = cart.find(i => 
-    i.id === id && i.fabric === selectedFabric
-  );
   cartMessage = "Adicionado ao carrinho ✅";
 
   setTimeout(() => {
@@ -363,6 +372,7 @@ if (selectedProduct.has_lining && !selectedLining) {
 
   render();
 }
+
 function goToCart() {
   view = "cart";
   render();
@@ -403,19 +413,27 @@ function goToCheckout() {
   view = "checkout";
   render();
 }
-function changeQty(id, fabric, delta) {
-  const item = cart.find(i => i.id === id && i.fabric === fabric);
+
+function changeQty(id, exterior, lining, delta) {
+  const item = cart.find(i => 
+    i.id === id &&
+    i.exterior === exterior &&
+    i.lining === lining
+  );
 
   if (!item) return;
 
   item.qty += delta;
 
   if (item.qty <= 0) {
-    cart = cart.filter(i => !(i.id === id && i.fabric === fabric));
+    cart = cart.filter(i =>
+      !(i.id === id && i.exterior === exterior && i.lining === lining)
+    );
   }
 
   render();
 }
+
 function selectFabric(code) {
   selectedFabric = code;
   render();
