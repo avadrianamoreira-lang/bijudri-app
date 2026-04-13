@@ -74,32 +74,11 @@ function render() {
     return;
   }
 
-  if (view === "home") return renderHome(app);
-  if (view === "product") return renderProduct(app);
-  if (view === "cart") return renderCart(app);
-  if (view === "checkout") return renderCheckout(app);
-
-  lucide.createIcons();
+  if (view === "home") return renderHome(app); lucide.createIcons();
+  if (view === "product") return renderProduct(app); lucide.createIcons();
+  if (view === "cart") return renderCart(app); lucide.createIcons();
+  if (view === "checkout") return renderCheckout(app); lucide.createIcons();
 }
-
-<div class="mt-4 space-y-3">
-  <input id="name" placeholder="Nome" class="w-full p-2 border rounded">
-  <input id="email" placeholder="Email" class="w-full p-2 border rounded">
-  <input id="phone" placeholder="Telemóvel" class="w-full p-2 border rounded">
-  <input id="address" placeholder="Morada" class="w-full p-2 border rounded">
-  <input id="city" placeholder="Localidade" class="w-full p-2 border rounded">
-  <input id="postal" placeholder="Código Postal" class="w-full p-2 border rounded">
-  <input id="country" placeholder="País" class="w-full p-2 border rounded">
-
-  <div id="shippingOptions" class="mt-4"></div>
-
-  <input id="inpost_address" placeholder="Morada do ponto InPost (se aplicável)" 
-    class="w-full p-2 border rounded hidden">
-</div>
-
-setTimeout(() => {
-  renderShippingOptions();
-}, 100);
 
 function renderHome(app) {
   let filtered;
@@ -236,13 +215,32 @@ function renderCheckout(app) {
     <div class="p-4">
       <button onclick="view='cart';render()">←</button>
 
-      <input id="name" placeholder="Nome">
-      <input id="email" placeholder="Email">
+      <div class="mt-4 space-y-3">
+        <input id="name" placeholder="Nome" class="w-full p-2 border rounded">
+        <input id="email" placeholder="Email" class="w-full p-2 border rounded">
+        <input id="phone" placeholder="Telemóvel" class="w-full p-2 border rounded">
+        <input id="address" placeholder="Morada" class="w-full p-2 border rounded">
+        <input id="city" placeholder="Localidade" class="w-full p-2 border rounded">
+        <input id="postal" placeholder="Código Postal" class="w-full p-2 border rounded">
+        <input id="country" placeholder="País" class="w-full p-2 border rounded">
 
-      <select id="zone" onchange="updateShipping()">
-        <option value="">Zona</option>
-        <option value="Portugal">
+        <div id="shippingOptions" class="mt-4"></div>
 
+        <input id="inpost_address" placeholder="Morada do ponto InPost"
+          class="w-full p-2 border rounded hidden">
+      </div>
+
+      <button onclick="submitOrder()" 
+        class="mt-6 w-full bg-[#575244] text-white py-3 rounded">
+        Confirmar Encomenda
+      </button>
+    </div>
+  `;
+
+  setTimeout(() => {
+    renderShippingOptions();
+  }, 100);
+}
 
 async function renderShippingOptions() {
   const container = document.getElementById("shippingOptions");
@@ -474,8 +472,6 @@ async function updateShipping() {
 
   const weight = cart.reduce((a,i)=>a+i.qty,0); // simplificado
 
-  const shipping = await calculateShipping(zone, weight);
-
   const total = cart.reduce((a,i)=>a+i.price*i.qty,0);
   const final = total + shipping;
 
@@ -510,21 +506,6 @@ async function submitOrder() {
   const final = total + shipping;
 
   await createOrder(customer, cart, final);
-
-  cart = [];
-  view = "home";
-  render();
-}
-
-  const total = cart.reduce((a,i)=>a+i.price*i.qty,0);
-  const shipping = await calculateShipping(zone, cart.length);
-  const final = total + shipping;
-
-  await createOrder(
-    { name, email },
-    cart,
-    final
-  );
 
   cart = [];
   view = "home";
