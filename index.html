@@ -95,6 +95,7 @@ function renderHome(app) {
   }
 
   app.innerHTML = `
+  ${renderHeader()}
     <header class="p-6 flex justify-between items-center bg-white shadow">
       <img src="https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png" style="height:100px;">
       <button onclick="goToCart()" class="relative">
@@ -151,6 +152,30 @@ function renderHome(app) {
   lucide.createIcons();
 }
 
+function renderHeader() {
+  return `
+    <header class="p-4 flex justify-between items-center bg-white shadow sticky top-0 z-50">
+
+      <div class="flex gap-4 items-center">
+        <button onclick="view='home';render()" class="font-bold">Bijudri</button>
+
+        <button onclick="view='home';render()" class="text-sm">Home</button>
+        <button class="text-sm">Sobre mim</button>
+        <button onclick="view='home';render()" class="text-sm">Produtos</button>
+      </div>
+
+      <button onclick="goToCart()" class="relative">
+        <i data-lucide="shopping-cart"></i>
+
+        <span class="absolute -top-2 -right-2 bg-[#cfa05d] text-white text-xs px-2 rounded-full">
+          ${cart.reduce((a,i)=>a+i.qty,0)}
+        </span>
+      </button>
+
+    </header>
+  `;
+}  
+  
 function renderProduct(app) {
   if (!selectedProduct) {
     view = "home";
@@ -164,6 +189,7 @@ function renderProduct(app) {
   const liningFabrics = fabrics.filter(f => f.type === "lining");
 
   app.innerHTML = `
+  ${renderHeader()}
     <div class="p-4">
 
       <button onclick="view='home';render()" class="text-sm mb-4">← Voltar</button>
@@ -193,25 +219,41 @@ function renderProduct(app) {
           <p class="text-lg font-bold text-[#cfa05d]">${p.price}€</p>
 
           <p class="text-sm mt-2">${p.description || ''}</p>
+<h3 class="mt-4 font-semibold text-[#575244]">
+  Escolhe as tuas personalizações
+</h3>
 
           <h3 class="mt-4 font-semibold">Exterior</h3>
-          <div class="grid grid-cols-4 gap-2">
-            ${outerFabrics.map(f => `
-              <img src="${f.image_url}"
-                onclick="selectExterior('${f.code}')"
-                class="h-16 border rounded cursor-pointer ${selectedExterior===f.code ? 'border-[#cfa05d]' : ''}">
-            `).join("")}
-          </div>
 
-          ${p.has_lining ? `
-            <h3 class="mt-4 font-semibold">Forro</h3>
-            <div class="grid grid-cols-4 gap-2">
-              ${liningFabrics.map(f => `
-                <img src="${f.image_url}"
-                  onclick="selectLining('${f.code}')"
-                  class="h-16 border rounded cursor-pointer ${selectedLining===f.code ? 'border-[#cfa05d]' : ''}">
-              `).join("")}
-            </div>
+<div class="grid grid-cols-4 gap-2 mt-2">
+  ${outerFabrics.length ? outerFabrics.map(f => `
+    <div onclick="selectExterior('${f.code}')"
+      class="cursor-pointer border-2 rounded-lg overflow-hidden 
+      ${selectedExterior===f.code ? 'border-[#cfa05d]' : 'border-transparent'}">
+
+      <img src="${f.image_url}" 
+        class="w-full h-20 object-cover">
+
+    </div>
+  `).join("") : "<p class='text-xs text-gray-500'>Sem tecidos disponíveis</p>"}
+</div>
+
+${p.has_lining ? `
+  <h3 class="mt-4 font-semibold">Forro</h3>
+
+  <div class="grid grid-cols-4 gap-2 mt-2">
+    ${liningFabrics.length ? liningFabrics.map(f => `
+      <div onclick="selectLining('${f.code}')"
+        class="cursor-pointer border-2 rounded-lg overflow-hidden 
+        ${selectedLining===f.code ? 'border-[#cfa05d]' : 'border-transparent'}">
+
+        <img src="${f.image_url}" 
+          class="w-full h-20 object-cover">
+
+      </div>
+    `).join("") : "<p class='text-xs text-gray-500'>Sem forros disponíveis</p>"}
+  </div>
+` : ""}
           ` : ""}
 
           <button onclick="addToCart('${p.id}')"
@@ -227,6 +269,7 @@ function renderProduct(app) {
   
 function renderCart(app) {
   app.innerHTML = `
+  ${renderHeader()}
     <div class="p-4">
       <button onclick="view='home';render()">←</button>
 
@@ -250,6 +293,7 @@ function renderCart(app) {
   
 function renderCheckout(app) {
   app.innerHTML = `
+  ${renderHeader()}
     <div class="p-4">
       <button onclick="view='cart';render()">←</button>
 
@@ -384,6 +428,8 @@ async function loadFabrics() {
 
   fabrics = data || [];
 }
+  console.log("FABRICS:", data);
+  
 function selectExterior(code) {
   selectedExterior = code;
   render();
@@ -428,6 +474,16 @@ function getCartWeight() {
   return cart.reduce((total, item) => {
     const product = products.find(p => p.id === item.id);
     return total + ((product?.weight || 0) * item.qty);
+  }, 0);
+}
+
+function getCartVolume() {
+  return cart.reduce((total, item) => {
+    const p = products.find(x => x.id === item.id);
+    if (!p) return total;
+
+    const volume = (p.length || 0) * (p.width || 0) * (p.height || 0);
+    return total + volume * item.qty;
   }, 0);
 }
 
