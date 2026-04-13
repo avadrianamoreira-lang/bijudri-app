@@ -74,10 +74,12 @@ function render() {
     return;
   }
 
-  if (view === "home") return renderHome(app); lucide.createIcons();
-  if (view === "product") return renderProduct(app); lucide.createIcons();
-  if (view === "cart") return renderCart(app); lucide.createIcons();
-  if (view === "checkout") return renderCheckout(app); lucide.createIcons();
+  if (view === "home") renderHome(app);
+  else if (view === "product") renderProduct(app);
+  else if (view === "cart") renderCart(app);
+  else if (view === "checkout") renderCheckout(app);
+
+  lucide.createIcons();
 }
 
 function renderHome(app) {
@@ -131,8 +133,15 @@ function renderHome(app) {
 
             <p>${p.price}€</p>
 
-            <button onclick="viewProduct('${p.id}')">Ver produto</button>
-            <button onclick="addToCart('${p.id}')">Adicionar</button>
+            <button onclick="viewProduct('${p.id}')"
+  class="mt-2 w-full border border-[#575244] text-[#575244] py-2 text-xs rounded hover:bg-[#575244] hover:text-white transition">
+  Ver produto
+</button>
+
+<button onclick="addToCart('${p.id}')"
+  class="mt-2 w-full bg-[#575244] text-white py-2 text-xs rounded hover:opacity-90 transition">
+  Adicionar ao carrinho
+</button>
           </div>
         `).join("")}
       </div>
@@ -157,36 +166,65 @@ function renderProduct(app) {
   app.innerHTML = `
     <div class="p-4">
 
-      <button onclick="view='home';render()">← Voltar</button>
+      <button onclick="view='home';render()" class="text-sm mb-4">← Voltar</button>
 
-      <h1>${p.name}</h1>
+      <h1 class="text-xl font-bold mb-2">${p.name}</h1>
 
-      <img src="${images[0]}" class="w-full h-60 object-cover">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-      <p>${p.price}€</p>
+        <!-- IMAGEM PRINCIPAL -->
+        <div>
+          <img src="${images[activeImage]}"
+            class="w-full h-[450px] object-cover rounded-xl">
+        </div>
 
-      <h3>Exterior</h3>
-      ${outerFabrics.map(f => `
-        <img src="${f.image_url}"
-          onclick="selectExterior('${f.code}')"
-          class="h-16 border ${selectedExterior===f.code ? 'border-[#cfa05d]' : ''}">
-      `).join("")}
+        <!-- INFO -->
+        <div>
 
-      ${p.has_lining ? `
-        <h3>Forro</h3>
-        ${liningFabrics.map(f => `
-          <img src="${f.image_url}"
-            onclick="selectLining('${f.code}')"
-            class="h-16 border ${selectedLining===f.code ? 'border-[#cfa05d]' : ''}">
-        `).join("")}
-      ` : ""}
+          <!-- THUMBNAILS -->
+          <div class="grid grid-cols-4 gap-2 mb-4">
+            ${images.map((img, i) => `
+              <img src="${img}"
+                onclick="changeImage(${i})"
+                class="h-20 w-full object-cover rounded cursor-pointer border ${activeImage===i ? 'border-[#cfa05d]' : ''}">
+            `).join("")}
+          </div>
 
-      <button onclick="addToCart('${p.id}')">Adicionar</button>
+          <p class="text-lg font-bold text-[#cfa05d]">${p.price}€</p>
 
+          <p class="text-sm mt-2">${p.description || ''}</p>
+
+          <h3 class="mt-4 font-semibold">Exterior</h3>
+          <div class="grid grid-cols-4 gap-2">
+            ${outerFabrics.map(f => `
+              <img src="${f.image_url}"
+                onclick="selectExterior('${f.code}')"
+                class="h-16 border rounded cursor-pointer ${selectedExterior===f.code ? 'border-[#cfa05d]' : ''}">
+            `).join("")}
+          </div>
+
+          ${p.has_lining ? `
+            <h3 class="mt-4 font-semibold">Forro</h3>
+            <div class="grid grid-cols-4 gap-2">
+              ${liningFabrics.map(f => `
+                <img src="${f.image_url}"
+                  onclick="selectLining('${f.code}')"
+                  class="h-16 border rounded cursor-pointer ${selectedLining===f.code ? 'border-[#cfa05d]' : ''}">
+              `).join("")}
+            </div>
+          ` : ""}
+
+          <button onclick="addToCart('${p.id}')"
+            class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
+            Adicionar ao carrinho
+          </button>
+
+        </div>
+      </div>
     </div>
   `;
 }
-
+  
 function renderCart(app) {
   app.innerHTML = `
     <div class="p-4">
