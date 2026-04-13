@@ -124,15 +124,6 @@ function renderHome(app) {
               class="w-full h-60 object-cover rounded">
 
             <h3 class="text-xs">${p.name}</h3>
-
-            <div class="grid grid-cols-4 gap-2 mt-2">
-              ${outerFabrics.map(f => `
-                <img src="${f.image_url}"
-                  onclick="selectExterior('${f.code}')"
-                  class="h-16 border ${selectedExterior===f.code ? 'border-[#cfa05d]' : ''}">
-              `).join("")}
-            </div>
-
             <p>${p.price}€</p>
 
             <button onclick="viewProduct('${p.id}')"
@@ -273,54 +264,126 @@ ${p.has_lining ? `
 function renderCart(app) {
   app.innerHTML = `
   ${renderHeader()}
-    <div class="p-4">
-      <button onclick="view='home';render()">←</button>
 
-      ${cart.map(item => `
-        <div>
-          ${item.name} x ${item.qty}
-          <br>
-          Ext: ${item.exterior}
-          ${item.lining ? `| Forro: ${item.lining}` : ""}
+  <div class="p-4 max-w-3xl mx-auto">
 
-          <div>
-            <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',-1)">-</button>
+    <button onclick="view='home';render()" class="text-sm mb-4">← Continuar a comprar</button>
+
+    <h2 class="text-xl font-bold mb-4">Carrinho</h2>
+
+    ${cart.length === 0 ? `
+      <p class="text-gray-500">O teu carrinho está vazio</p>
+    ` : ""}
+
+    ${cart.map(item => `
+      <div class="bg-white p-4 rounded-xl shadow mb-3 flex gap-4">
+
+        <!-- IMAGEM -->
+        <img src="${(item.image_url || '').split(',')[0]}" 
+          class="w-20 h-20 object-cover rounded">
+
+        <!-- INFO -->
+        <div class="flex-1">
+
+          <p class="font-semibold">${item.name}</p>
+
+          <p class="text-xs text-gray-500 mt-1">
+            Exterior: ${item.exterior || "-"}
+            ${item.lining ? `<br>Forro: ${item.lining}` : ""}
+          </p>
+
+          <div class="flex items-center gap-2 mt-2">
+            <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',-1)"
+              class="px-2 border rounded">-</button>
+
             <span>${item.qty}</span>
-            <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',1)">+</button>
+
+            <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',1)"
+              class="px-2 border rounded">+</button>
           </div>
+
         </div>
-      `).join("")}
+
+        <!-- PREÇO -->
+        <div class="font-bold text-[#cfa05d]">
+          ${item.price * item.qty}€
+        </div>
+
+      </div>
+    `).join("")}
+
+    <!-- TOTAL -->
+    <div class="mt-6 text-right">
+      <p class="text-lg font-bold">
+        Total: ${cart.reduce((a,i)=>a+i.price*i.qty,0)}€
+      </p>
     </div>
-  `;
+
+    <!-- CTA -->
+    ${cart.length > 0 ? `
+      <button onclick="goToCheckout()" 
+        class="mt-6 w-full bg-[#575244] text-white py-3 rounded-xl">
+        Finalizar Encomenda
+      </button>
+    ` : ""}
   lucide.createIcons();
+  </div>
+  `;
 }
   
 function renderCheckout(app) {
   app.innerHTML = `
   ${renderHeader()}
-    <div class="p-4">
-      <button onclick="view='cart';render()">←</button>
 
-      <div class="mt-4 space-y-3">
-        <input id="name" placeholder="Nome" class="w-full p-2 border rounded">
-        <input id="email" placeholder="Email" class="w-full p-2 border rounded">
-        <input id="phone" placeholder="Telemóvel" class="w-full p-2 border rounded">
-        <input id="address" placeholder="Morada" class="w-full p-2 border rounded">
-        <input id="city" placeholder="Localidade" class="w-full p-2 border rounded">
-        <input id="postal" placeholder="Código Postal" class="w-full p-2 border rounded">
-        <input id="country" placeholder="País" class="w-full p-2 border rounded">
+  <div class="p-4 max-w-3xl mx-auto">
 
-        <div id="shippingOptions" class="mt-4"></div>
+    <button onclick="view='cart';render()" class="text-sm mb-4">← Voltar ao carrinho</button>
 
-        <input id="inpost_address" placeholder="Morada do ponto InPost"
-          class="w-full p-2 border rounded hidden">
-      </div>
+    <h2 class="text-xl font-bold mb-4">Checkout</h2>
 
-      <button onclick="submitOrder()" 
-        class="mt-6 w-full bg-[#575244] text-white py-3 rounded">
-        Confirmar Encomenda
-      </button>
+    <!-- DADOS -->
+    <div class="space-y-3">
+      <input id="name" placeholder="Nome" class="w-full p-2 border rounded">
+      <input id="email" placeholder="Email" class="w-full p-2 border rounded">
+      <input id="phone" placeholder="Telemóvel" class="w-full p-2 border rounded">
+      <input id="address" placeholder="Morada" class="w-full p-2 border rounded">
+      <input id="city" placeholder="Localidade" class="w-full p-2 border rounded">
+      <input id="postal" placeholder="Código Postal" class="w-full p-2 border rounded">
+      <input id="country" placeholder="País" class="w-full p-2 border rounded">
     </div>
+
+    <!-- RESUMO -->
+    <div class="mt-6 bg-white p-4 rounded-xl shadow">
+      <h3 class="font-bold mb-2">Resumo</h3>
+
+      ${cart.map(item => `
+        <div class="flex justify-between text-sm">
+          <span>${item.name} x ${item.qty}</span>
+          <span>${item.price * item.qty}€</span>
+        </div>
+      `).join("")}
+
+      <div class="mt-2 font-bold">
+        Total: ${cart.reduce((a,i)=>a+i.price*i.qty,0)}€
+      </div>
+    </div>
+
+    <!-- ENVIO -->
+    <div class="mt-6">
+      <h3 class="font-bold mb-2">Método de envio</h3>
+      <div id="shippingOptions"></div>
+
+      <input id="inpost_address" placeholder="Morada do ponto InPost"
+        class="w-full p-2 border rounded mt-2 hidden">
+    </div>
+
+    <!-- BOTÃO -->
+    <button onclick="submitOrder()" 
+      class="mt-6 w-full bg-[#575244] text-white py-3 rounded-xl">
+      Confirmar Encomenda
+    </button>
+
+  </div>
   `;
 
   setTimeout(() => {
