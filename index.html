@@ -99,13 +99,7 @@ function renderHome(app) {
   app.innerHTML = `
   ${renderHeader()}
       <img src="https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png" style="height:100px;">
-      <button onclick="goToCart()" class="relative">
-        <i data-lucide="shopping-cart"></i>
-        <span class="absolute -top-4 -right-4 bg-[#cfa05d] text-white text-xs px-4 rounded-full">
-          ${cart.reduce((a,i)=>a+i.qty,0)}
-        </span>
-      </button>
-    </header>
+     <div class="p-4">
 
     <div class="p-4">
       <div class="flex gap-2 overflow-x-auto mb-6">
