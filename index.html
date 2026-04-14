@@ -266,8 +266,24 @@ function renderCart(app) {
     <h2 class="text-xl font-bold mb-4">Carrinho</h2>
 
     ${cart.length === 0 ? `
-      <p class="text-gray-500">O teu carrinho está vazio</p>
-    ` : ""}
+     <p class="text-xs text-gray-500 mt-1">
+  Exterior:
+</p>
+
+<div class="flex gap-2 mt-1">
+  ${item.exterior ? `
+    <img src="${getFabricByCode(item.exterior)?.image_url || ''}"
+      class="w-10 h-10 object-cover rounded border">
+  ` : ""}
+</div>
+
+${item.lining ? `
+  <p class="text-xs text-gray-500 mt-2">Forro:</p>
+  <div class="flex gap-2 mt-1">
+    <img src="${getFabricByCode(item.lining)?.image_url || ''}"
+      class="w-10 h-10 object-cover rounded border">
+  </div>
+` : ""}
 
     ${cart.map(item => `
       <div class="bg-white p-4 rounded-xl shadow mb-3 flex gap-4">
@@ -553,6 +569,26 @@ function getCartVolume() {
 let selectedShipping = null;
 let shippingPrice = 0;
 
+function getFabricByCode(code) {
+  return fabrics.find(f => f.code === code);
+}
+
+function getCartDimensions() {
+  let maxLength = 0;
+  let maxHeight = 0;
+  let maxWidth = 0;
+
+  cart.forEach(item => {
+    const p = products.find(prod => prod.id === item.id);
+    if (!p) return;
+
+    maxLength = Math.max(maxLength, p.length || 0);
+    maxHeight = Math.max(maxHeight, p.height || 0);
+    maxWidth = Math.max(maxWidth, p.width || 0);
+  });
+
+  return { length: maxLength, height: maxHeight, width: maxWidth };
+}
   
 // INIT
 document.addEventListener("DOMContentLoaded", async () => {
@@ -570,6 +606,7 @@ async function createOrder(customer, cart, total) {
     customer_email: customer.email,
     total: total,
     status: "pendente"
+    shipping_method: selectedShipping,
   })
   .select()
   .single();
@@ -595,6 +632,7 @@ async function createOrder(customer, cart, total) {
 
 async function calculateShippingOptions() {
   const weight = getCartWeight();
+  const dimensions = getCartDimensions();
 
   const { data, error } = await window.supabaseClient
     .from("shipping_rules")
@@ -608,11 +646,18 @@ async function calculateShippingOptions() {
   const methods = ["CTT Verde", "CTT Registado", "InPost"];
 
   return methods.map(method => {
-    const rule = data.find(r =>
+
+    const validRules = data.filter(r =>
       r.method === method &&
       weight >= r.min_weight &&
-      weight <= r.max_weight
+      weight <= r.max_weight &&
+      dimensions.height >= r.min_height &&
+      dimensions.height <= r.max_height &&
+      dimensions.length >= r.min_length &&
+      dimensions.length <= r.max_length
     );
+
+    const rule = validRules[0];
 
     return {
       method,
