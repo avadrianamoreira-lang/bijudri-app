@@ -257,66 +257,53 @@ function renderCart(app) {
     <button onclick="view='home';render()" class="text-sm mb-4">← Continuar a comprar</button>
 
     <h2 class="text-xl font-bold mb-4">Carrinho</h2>
-
- ${cart.length === 0 ? `
+${cart.length === 0 ? `
   <p class="text-gray-500">O carrinho está vazio</p>
 ` : `
   ${cart.map(item => `
-    <
-`}
-      <div class="bg-white p-4 rounded-xl shadow mb-3 flex gap-4">
+    <div class="bg-white p-4 rounded-xl shadow mb-3 flex gap-4">
 
-        <!-- IMAGEM -->
-        <img src="${(item.image_url || '').split(',')[0]}" 
-          class="w-20 h-20 object-cover rounded">
+      <img src="${(item.image_url || '').split(',')[0]}" 
+        class="w-20 h-20 object-cover rounded">
 
-        <!-- INFO -->
-        <div class="flex-1">
+      <div class="flex-1">
 
-          <p class="font-semibold">${item.name}</p>
+        <p class="font-semibold">${item.name}</p>
 
-          <p class="text-xs text-gray-500 mt-1">
-            Exterior: ${item.exterior || "-"}
-            ${item.lining ? `<br>Forro: ${item.lining}` : ""}
-          </p>
+        <div class="mt-2">
 
-          <div class="flex items-center gap-2 mt-2">
-            <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',-1)"
-              class="px-2 border rounded">-</button>
+          <p class="text-xs text-gray-500">Exterior:</p>
+          ${item.exterior ? `
+            <img src="${getFabricByCode(item.exterior)?.image_url || ''}"
+              class="w-10 h-10 object-cover rounded border">
+          ` : ""}
 
-            <span>${item.qty}</span>
-
-            <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',1)"
-              class="px-2 border rounded">+</button>
-          </div>
-
+          ${item.lining ? `
+            <p class="text-xs text-gray-500 mt-2">Forro:</p>
+            <img src="${getFabricByCode(item.lining)?.image_url || ''}"
+              class="w-10 h-10 object-cover rounded border">
+          ` : ""}
         </div>
 
-        <!-- PREÇO -->
-        <div class="font-bold text-[#cfa05d]">
-          ${item.price * item.qty}€
+        <div class="flex items-center gap-2 mt-2">
+          <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',-1)"
+            class="px-2 border rounded">-</button>
+
+          <span>${item.qty}</span>
+
+          <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',1)"
+            class="px-2 border rounded">+</button>
         </div>
 
       </div>
-    `.join("")}
 
-    <!-- TOTAL -->
-    <div class="mt-6 text-right">
-      <p class="text-lg font-bold">
-        Total: ${cart.reduce((a,i)=>a+i.price*i.qty,0)}€
-      </p>
+      <div class="font-bold text-[#cfa05d]">
+        ${item.price * item.qty}€
+      </div>
+
     </div>
-
-    <!-- CTA -->
-    ${cart.length > 0 ? `
-      <button onclick="goToCheckout()" 
-        class="mt-6 w-full bg-[#575244] text-white py-3 rounded-xl">
-        Finalizar Encomenda
-      </button>
-    ` : ""}
-  </div>
-  `;
-}
+  `).join("")}
+`}
   
 function renderCheckout(app) {
   app.innerHTML = `
