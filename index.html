@@ -84,7 +84,6 @@ function render() {
 
 function renderHome(app) {
   let filtered;
-  const outerFabrics = fabrics.filter(f => f.type === "outer");
 
   if (selectedCategory === "Todas") {
     filtered = products;
@@ -92,8 +91,6 @@ function renderHome(app) {
     filtered = products.filter(p => p.featured === true);
   } else {
     filtered = products.filter(p => p.category === selectedCategory);
-  
-    lucide.createIcons();
   }
 
   app.innerHTML = `
@@ -134,8 +131,6 @@ function renderHome(app) {
       </div>
     </div>
   `;
-
-  lucide.createIcons();
 }
 
 function renderHeader() {
@@ -160,7 +155,6 @@ function renderHeader() {
 
     </header>
   `;
-  lucide.createIcons();
 }  
   
 function renderProduct(app) {
@@ -175,7 +169,6 @@ function renderProduct(app) {
   const outerFabrics = fabrics.filter(f => f.type === "outer");
   const liningFabrics = fabrics.filter(f => f.type === "lining");
 
-  lucide.createIcons();
   
   app.innerHTML = `
   ${renderHeader()}
@@ -265,27 +258,53 @@ function renderCart(app) {
 
     <h2 class="text-xl font-bold mb-4">Carrinho</h2>
 
-    ${cart.length === 0 ? `
-     <p class="text-xs text-gray-500 mt-1">
-  Exterior:
-</p>
+ ${cart.length === 0 ? `
+  <p class="text-gray-500">O carrinho está vazio</p>
+` : `
+  ${cart.map(item => `
+    <div class="bg-white p-4 rounded-xl shadow mb-3 flex gap-4">
 
-<div class="flex gap-2 mt-1">
-  ${item.exterior ? `
-    <img src="${getFabricByCode(item.exterior)?.image_url || ''}"
-      class="w-10 h-10 object-cover rounded border">
-  ` : ""}
-</div>
+      <img src="${(item.image_url || '').split(',')[0]}" 
+        class="w-20 h-20 object-cover rounded">
 
-${item.lining ? `
-  <p class="text-xs text-gray-500 mt-2">Forro:</p>
-  <div class="flex gap-2 mt-1">
-    <img src="${getFabricByCode(item.lining)?.image_url || ''}"
-      class="w-10 h-10 object-cover rounded border">
-  </div>
-` : ""}
+      <div class="flex-1">
 
-    ${cart.map(item => `
+        <p class="font-semibold">${item.name}</p>
+
+        <div class="mt-2">
+
+          <p class="text-xs text-gray-500">Exterior:</p>
+          ${item.exterior ? `
+            <img src="${getFabricByCode(item.exterior)?.image_url || ''}"
+              class="w-10 h-10 object-cover rounded border">
+          ` : ""}
+
+          ${item.lining ? `
+            <p class="text-xs text-gray-500 mt-2">Forro:</p>
+            <img src="${getFabricByCode(item.lining)?.image_url || ''}"
+              class="w-10 h-10 object-cover rounded border">
+          ` : ""}
+        </div>
+
+        <div class="flex items-center gap-2 mt-2">
+          <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',-1)"
+            class="px-2 border rounded">-</button>
+
+          <span>${item.qty}</span>
+
+          <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',1)"
+            class="px-2 border rounded">+</button>
+        </div>
+
+      </div>
+
+      <div class="font-bold text-[#cfa05d]">
+        ${item.price * item.qty}€
+      </div>
+
+    </div>
+  `).join("")}
+`}
       <div class="bg-white p-4 rounded-xl shadow mb-3 flex gap-4">
 
         <!-- IMAGEM -->
@@ -336,7 +355,6 @@ ${item.lining ? `
         Finalizar Encomenda
       </button>
     ` : ""}
-  lucide.createIcons();
   </div>
   `;
 }
@@ -399,7 +417,6 @@ function renderCheckout(app) {
   setTimeout(() => {
     renderShippingOptions();
   }, 100);
-  lucide.createIcons();
 }
 
 async function renderShippingOptions() {
@@ -419,7 +436,6 @@ async function renderShippingOptions() {
       </span>
     </label>
   `).join("");
-    lucide.createIcons();
 }
 
 function selectShipping(method) {
@@ -430,7 +446,6 @@ function selectShipping(method) {
   } else {
     document.getElementById("inpost_address").classList.add("hidden");
   }
-  lucide.createIcons();
 }
 
 // FUNÇÕES
@@ -488,7 +503,11 @@ function goToCart() {
 }
   function viewProduct(id) {
   selectedProduct = products.find(p => String(p.id) === String(id));
-  activeImage = 0; 
+  activeImage = 0;
+
+  selectedExterior = null;
+  selectedLining = null;
+
   view = "product";
   render();
 }
@@ -605,7 +624,7 @@ async function createOrder(customer, cart, total) {
     customer_name: customer.name,
     customer_email: customer.email,
     total: total,
-    status: "pendente"
+    status: "pendente",
     shipping_method: selectedShipping,
   })
   .select()
