@@ -6,6 +6,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="[res.cloudinary.com](https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png)">
   <title>Bijudri</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>  
@@ -49,19 +50,16 @@ let selectedShipping = null;
 let shippingPrice = 0;
 let productsLoaded = false;
 
-
 // PRODUTOS EXEMPLO (substituímos depois pelos teus reais)
 async function loadProducts() {
   const { data, error } = await window.supabaseClient
     .from("products")
     .select("*");
 
-  console.log("DATA:", data);
-  console.log("ERROR:", error);
-
   productsLoaded = true;
 
   if (error) {
+    console.error("Erro ao carregar produtos:", error);
     alert("Erro ao carregar produtos");
     products = [];
     return;
@@ -81,7 +79,7 @@ function render() {
     return;
   }
 
-  if (productsLoaded && products.length === 0) {
+  if (products.length === 0) {
     app.innerHTML = "<p class='p-4'>Sem produtos disponíveis.</p>";
     return;
   }
@@ -91,7 +89,6 @@ function render() {
   else if (view === "cart") renderCart(app);
   else if (view === "checkout") renderCheckout(app);
 
-  bindEvents();
   lucide.createIcons();
 }
 
@@ -108,40 +105,39 @@ function renderHome(app) {
 
   app.innerHTML = `
     ${renderHeader()}
-    <img src="[res.cloudinary.com](https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png)" style="height:100px;">
+
     <div class="p-4">
+      <img src="[res.cloudinary.com](https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png)" style="height:100px;" class="mb-4">
 
-      <div class="p-4">
-        <div class="flex gap-2 overflow-x-auto mb-6">
-          ${categories.map(cat => `
-            <button onclick="selectCategory('${cat}')"
-              class="px-1 py-4 rounded-full border ${selectedCategory === cat ? 'bg-[#cfa05d] text-white' : ''}">
-              ${cat}
+      <div class="flex gap-2 overflow-x-auto mb-6">
+        ${categories.map(cat => `
+          <button onclick="selectCategory('${cat}')"
+            class="px-3 py-2 rounded-full border ${selectedCategory === cat ? 'bg-[#cfa05d] text-white' : ''}">
+            ${cat}
+          </button>
+        `).join("")}
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        ${filtered.map(p => `
+          <div class="bg-white p-2 rounded-xl shadow-sm">
+            <img src="${(p.image_url || '').split(',')[0] || ''}" 
+              class="w-full h-60 object-cover rounded">
+
+            <h3 class="text-xs mt-2">${p.name}</h3>
+            <p>${Number(p.price) || 0}€</p>
+
+            <button onclick="viewProduct('${p.id}')"
+              class="mt-2 w-full border border-[#575244] text-[#575244] py-2 text-xs rounded hover:bg-[#575244] hover:text-white transition">
+              Ver produto
             </button>
-          `).join("")}
-        </div>
 
-        <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          ${filtered.map(p => `
-            <div class="bg-white p-2 rounded-xl shadow-sm">
-              <img src="${(p.image_url || '').split(',')[0]}" 
-                class="w-full h-60 object-cover rounded">
-
-              <h3 class="text-xs">${p.name}</h3>
-              <p>${p.price}€</p>
-
-              <button onclick="viewProduct('${p.id}')"
-                class="mt-2 w-full border border-[#575244] text-[#575244] py-2 text-xs rounded hover:bg-[#575244] hover:text-white transition">
-                Ver produto
-              </button>
-
-              <button onclick="addToCart('${p.id}')"
-                class="mt-2 w-full bg-[#575244] text-white py-2 text-xs rounded hover:opacity-90 transition">
-                Adicionar ao carrinho
-              </button>
-            </div>
-          `).join("")}
-        </div>
+            <button onclick="viewProduct('${p.id}')"
+              class="mt-2 w-full bg-[#575244] text-white py-2 text-xs rounded hover:opacity-90 transition">
+              Escolher opções
+            </button>
+          </div>
+        `).join("")}
       </div>
     </div>
   `;
@@ -165,12 +161,12 @@ function bindEvents() {
 
 
 function renderHeader() {
+  const cartCount = cart.reduce((a, i) => a + i.qty, 0);
+
   return `
     <header class="p-4 flex justify-between items-center bg-white shadow sticky top-0 z-50">
-
       <div class="flex gap-4 items-center">
         <button onclick="view='home';render()" class="font-bold">Bijudri</button>
-
         <button onclick="view='home';render()" class="text-sm">Home</button>
         <button class="text-sm">Sobre mim</button>
         <button onclick="view='home';render()" class="text-sm">Produtos</button>
@@ -178,16 +174,14 @@ function renderHeader() {
 
       <button onclick="goToCart()" class="relative">
         <i data-lucide="shopping-cart"></i>
-
         <span class="absolute -top-2 -right-2 bg-[#cfa05d] text-white text-xs px-2 rounded-full">
-          ${cart.reduce((a,i)=>a+i.qty,0)}
+          ${cartCount}
         </span>
       </button>
-
     </header>
   `;
-}  
-  
+}
+
 function renderProduct(app) {
   if (!selectedProduct) {
     view = "home";
@@ -196,7 +190,7 @@ function renderProduct(app) {
   }
 
   const p = selectedProduct;
-  const images = (p.image_url || "").split(",").filter(Boolean);
+  const images = (p.image_url || "").split(",").map(x => x.trim()).filter(Boolean);
 
   const outerFabrics = fabrics.filter(f => f.type === "outer");
   const liningFabrics = fabrics.filter(f => f.type === "lining");
@@ -204,7 +198,7 @@ function renderProduct(app) {
   const thumbnailsHTML = images.map((img, i) => `
     <img src="${img}"
       onclick="changeImage(${i})"
-      class="h-20 w-full object-cover rounded cursor-pointer border ${activeImage === i ? 'border-[#cfa05d]' : ''}">
+      class="h-20 w-full object-cover rounded cursor-pointer border ${activeImage === i ? 'border-[#cfa05d]' : 'border-transparent'}">
   `).join("");
 
   const exteriorHTML = outerFabrics.length
@@ -250,12 +244,10 @@ function renderProduct(app) {
             ${thumbnailsHTML}
           </div>
 
-          <p class="text-lg font-bold text-[#cfa05d]">${p.price}€</p>
+          <p class="text-lg font-bold text-[#cfa05d]">${Number(p.price) || 0}€</p>
           <p class="text-sm mt-2">${p.description || ""}</p>
 
-          <h3 class="mt-4 font-semibold text-[#575244]">
-            Escolhe as tuas personalizações
-          </h3>
+          <h3 class="mt-4 font-semibold text-[#575244]">Escolhe as tuas personalizações</h3>
 
           <h3 class="mt-4 font-semibold">Exterior</h3>
           <div class="grid grid-cols-4 gap-2 mt-2">
@@ -457,21 +449,32 @@ function selectCategory(cat) {
 function addToCart(id) {
   const product = products.find(p => String(p.id) === String(id));
 
- // Só exigir exterior se o produto tiver opção de personalização
-const hasCustomization = outerFabrics.length > 0; // ou uma flag no produto
-
-if (hasCustomization && !selectedExterior) {
-  alert("Seleciona tecido exterior");
-  return;
-}
-
-  if (product.has_lining && !selectedLining) {
-    alert("Seleciona tecido de forro");
+  if (!product) {
+    alert("Produto não encontrado");
     return;
   }
 
-  const existing = cart.find(i => 
-    i.id === id &&
+  const outerFabrics = fabrics.filter(f => f.type === "outer");
+  const requiresExterior = outerFabrics.length > 0;
+  const requiresLining = product.has_lining === true;
+
+  if (view === "product") {
+    if (requiresExterior && !selectedExterior) {
+      alert("Seleciona tecido exterior");
+      return;
+    }
+
+    if (requiresLining && !selectedLining) {
+      alert("Seleciona tecido de forro");
+      return;
+    }
+  } else {
+    viewProduct(id);
+    return;
+  }
+
+  const existing = cart.find(i =>
+    String(i.id) === String(id) &&
     i.exterior === selectedExterior &&
     i.lining === selectedLining
   );
@@ -482,11 +485,11 @@ if (hasCustomization && !selectedExterior) {
     cart.push({
       id: product.id,
       name: product.name,
-      price: product.price,
-      image_url: product.image_url,
+      price: Number(product.price) || 0,
+      image_url: product.image_url || "",
       qty: 1,
-      exterior: selectedExterior,
-      lining: selectedLining
+      exterior: selectedExterior || null,
+      lining: selectedLining || null
     });
   }
 
@@ -504,20 +507,16 @@ function goToCart() {
   view = "cart";
   render();
 }
-  function viewProduct(id) {
+ function viewProduct(id) {
   selectedProduct = products.find(p => String(p.id) === String(id));
   activeImage = 0;
-
   selectedExterior = null;
   selectedLining = null;
-
+  cartMessage = "";
   view = "product";
   render();
 }
-function changeImage(index) {
-  activeImage = index;
-  render();
-}
+
 async function loadFabrics() {
   const { data, error } = await window.supabaseClient
     .from("fabrics")
