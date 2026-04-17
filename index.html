@@ -107,7 +107,7 @@ function renderHome(app) {
     ${renderHeader()}
 
     <div class="p-4">
-      <img src="[res.cloudinary.com](https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png)" style="height:100px;" class="mb-4">
+      <img src="[res.cloudinary.com](https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png)">
 
       <div class="flex gap-2 overflow-x-auto mb-6">
         ${categories.map(cat => `
@@ -678,13 +678,17 @@ async function calculateShippingOptions() {
 );
 
     const rule = validRules[0];
-
     return {
       method,
       price: rule ? rule.price : null,
       delivery_time: rule ? rule.delivery_time : "-"
     };
   });
+}
+
+console.log("PESO:", weight);
+console.log("DIMENSÕES:", dimensions);
+console.log("REGRAS:", data);
 }
 
 async function submitOrder() {
