@@ -45,18 +45,21 @@ let selectedFabric = null;
 let selectedExterior = null;
 let selectedLining = null;
 let fabrics = [];
+let selectedShipping = null;
+let shippingPrice = 0;
+
 
 // PRODUTOS EXEMPLO (substituímos depois pelos teus reais)
 async function loadProducts() {
+  const app = document.getElementById("app");
+  app.innerHTML = `<div class="p-8 text-center">A carregar...</div>`;
+  
   const { data, error } = await window.supabaseClient
     .from("products")
     .select("*");
 
-  console.log("DATA:", data);
-  console.log("ERROR:", error);
-
   if (error) {
-    alert("Erro ao carregar produtos");
+    app.innerHTML = `<div class="p-8 text-center text-red-500">Erro ao carregar produtos</div>`;
     return;
   }
 
@@ -122,10 +125,11 @@ function renderHome(app) {
   Ver produto
 </button>
 
-<button onclick="addToCart('${p.id}')"
+<button onclick="viewProduct('${p.id}')"
   class="mt-2 w-full bg-[#575244] text-white py-2 text-xs rounded hover:opacity-90 transition">
   Adicionar ao carrinho
 </button>
+
           </div>
         `).join("")}
       </div>
@@ -168,6 +172,8 @@ function renderProduct(app) {
 
   const outerFabrics = fabrics.filter(f => f.type === "outer");
   const liningFabrics = fabrics.filter(f => f.type === "lining");
+
+  ${cartMessage ? `<p class="mt-2 text-green-600 text-sm">${cartMessage}</p>` : ""}
 
   
   app.innerHTML = `
@@ -237,8 +243,8 @@ ${p.has_lining ? `
   </div>
 ` : ""}
 
-          <button onclick="addToCart('${p.id}')"
-            class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
+          <button data-id="${p.id}" class="add-to-cart-btn">
+No er            class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
             Adicionar ao carrinho
           </button>
 
@@ -427,12 +433,15 @@ function selectCategory(cat) {
 }
 
 function addToCart(id) {
-  const product = products.find(p => p.id === id);
+  const product = products.find(p => String(p.id) === String(id));
 
-  if (!selectedExterior) {
-    alert("Seleciona tecido exterior");
-    return;
-  }
+ // Só exigir exterior se o produto tiver opção de personalização
+const hasCustomization = outerFabrics.length > 0; // ou uma flag no produto
+
+if (hasCustomization && !selectedExterior) {
+  alert("Seleciona tecido exterior");
+  return;
+}
 
   if (product.has_lining && !selectedLining) {
     alert("Seleciona tecido de forro");
@@ -557,9 +566,6 @@ function getCartVolume() {
   }, 0);
 }
 
-let selectedShipping = null;
-let shippingPrice = 0;
-
 function getFabricByCode(code) {
   return fabrics.find(f => f.code === code);
 }
@@ -639,14 +645,16 @@ async function calculateShippingOptions() {
   return methods.map(method => {
 
     const validRules = data.filter(r =>
-      r.method === method &&
-      weight >= r.min_weight &&
-      weight <= r.max_weight &&
-      dimensions.height >= r.min_height &&
-      dimensions.height <= r.max_height &&
-      dimensions.length >= r.min_length &&
-      dimensions.length <= r.max_length
-    );
+  r.method === method &&
+  weight >= r.min_weight &&
+  weight <= r.max_weight &&
+  dimensions.height >= r.min_height &&
+  dimensions.height <= r.max_height &&
+  dimensions.length >= r.min_length &&
+  dimensions.length <= r.max_length &&
+  dimensions.width >= r.min_width &&
+  dimensions.width <= r.max_width
+);
 
     const rule = validRules[0];
 
@@ -662,7 +670,7 @@ async function submitOrder() {
 
   const customer = {
     name: document.getElementById("name").value,
-    email: document.getElementById("email").value,
+    email: document.getElementById("email").value.trim(),
     phone: document.getElementById("phone").value,
     address: document.getElementById("address").value,
     city: document.getElementById("city").value,
@@ -673,6 +681,11 @@ async function submitOrder() {
 
   if (!customer.name || !customer.email || !selectedShipping) {
     alert("Preenche os campos obrigatórios");
+    return;
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(customer.email)) {
+    alert("Email inválido");
     return;
   }
 
