@@ -434,14 +434,20 @@ async function renderShippingOptions() {
   `).join("");
 }
 
-function selectShipping(method) {
+async function selectShipping(method) {
   selectedShipping = method;
 
-  if (method === "InPost") {
+  const options = await calculateShippingOptions();
+  const selected = options.find(o => o.method === method);
+  shippingPrice = selected?.price || 0;
+
+  if (method === "InPost - Locker ou Ponto Pack") {
     document.getElementById("inpost_address").classList.remove("hidden");
   } else {
     document.getElementById("inpost_address").classList.add("hidden");
   }
+
+  renderCheckoutSummary();
 }
 
 // FUNÇÕES
@@ -619,22 +625,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   render();
 });
   
-async function createOrder(customer, cart, total) {
-const orderPayload = {
-  customer_name: customer.name,
-  customer_email: customer.email,
-  customer_phone: customer.phone || null,
-  address: customer.address || null,
-  city: customer.city || null,
-  postal_code: customer.postal || null,
-  country: customer.country || null,
-  inpost_address: customer.inpost || null,
-  subtotal: cart.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.qty) || 0), 0),
-  shipping_price: Number(shippingPrice) || 0,
-  total: Number(total) || 0,
-  status: "pendente",
-  shipping_method: selectedShipping
-};
+async function createOrder(customer, cart, total, subtotal, shippingPriceValue) {
+  const orderPayload = {
+    customer_name: customer.name,
+    customer_email: customer.email,
+    customer_phone: customer.phone || null,
+    address: customer.address || null,
+    city: customer.city || null,
+    postal_code: customer.postal || null,
+    country: customer.country || null,
+    inpost_address: customer.inpost || null,
+    subtotal: Number(subtotal) || 0,
+    shipping_price: Number(shippingPriceValue) || 0,
+    total: Number(total) || 0,
+    status: "pendente",
+    shipping_method: selectedShipping
+  };
 
   const { data, error } = await window.supabaseClient
     .from("orders")
@@ -663,10 +669,10 @@ const orderPayload = {
     .insert(items);
 
   if (itemsError) {
-  console.error("Erro ao guardar artigos:", itemsError);
-  alert("Encomenda criada, mas houve erro ao guardar os artigos: " + itemsError.message);
-  return;
-}
+    console.error("Erro ao guardar artigos:", itemsError);
+    alert("Encomenda criada, mas houve erro ao guardar os artigos: " + itemsError.message);
+    return;
+  }
 
   alert("Encomenda criada com sucesso!");
 }
@@ -724,39 +730,44 @@ async function calculateShippingOptions() {
 }
 
 async function submitOrder() {
-
   const customer = {
-    name: document.getElementById("name").value,
+    name: document.getElementById("name").value.trim(),
     email: document.getElementById("email").value.trim(),
-    phone: document.getElementById("phone").value,
-    address: document.getElementById("address").value,
-    city: document.getElementById("city").value,
-    postal: document.getElementById("postal").value,
-    country: document.getElementById("country").value,
-    inpost: document.getElementById("inpost_address").value
+    phone: document.getElementById("phone").value.trim(),
+    address: document.getElementById("address").value.trim(),
+    city: document.getElementById("city").value.trim(),
+    postal: document.getElementById("postal").value.trim(),
+    country: document.getElementById("country").value.trim(),
+    inpost: document.getElementById("inpost_address").value.trim()
   };
 
   if (!customer.name || !customer.email || !selectedShipping) {
     alert("Preenche os campos obrigatórios");
     return;
   }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(customer.email)) {
-    alert("Email inválido");
+
+  if (selectedShipping === "InPost - Locker ou Ponto Pack" && !customer.inpost) {
+    alert("Indica a morada do ponto InPost");
     return;
   }
 
   const options = await calculateShippingOptions();
   const selected = options.find(o => o.method === selectedShipping);
 
-  const shipping = selected?.price || 0;
+  if (!selected || selected.price === null) {
+    alert("O método de envio selecionado não está disponível.");
+    return;
+  }
 
-  const total = cart.reduce((a,i)=>a+i.price*i.qty,0);
-  const final = total + shipping;
+  const subtotal = cart.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.qty) || 0), 0);
+  shippingPrice = Number(selected.price) || 0;
+  const final = subtotal + shippingPrice;
 
-  await createOrder(customer, cart, final);
+  await createOrder(customer, cart, final, subtotal, shippingPrice);
 
   cart = [];
+  selectedShipping = null;
+  shippingPrice = 0;
   view = "home";
   render();
 }
