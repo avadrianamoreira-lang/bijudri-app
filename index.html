@@ -47,19 +47,23 @@ let selectedLining = null;
 let fabrics = [];
 let selectedShipping = null;
 let shippingPrice = 0;
+let productsLoaded = false;
 
 
 // PRODUTOS EXEMPLO (substituímos depois pelos teus reais)
 async function loadProducts() {
-  const app = document.getElementById("app");
-  app.innerHTML = `<div class="p-8 text-center">A carregar...</div>`;
-  
   const { data, error } = await window.supabaseClient
     .from("products")
     .select("*");
 
+  console.log("DATA:", data);
+  console.log("ERROR:", error);
+
+  productsLoaded = true;
+
   if (error) {
-    app.innerHTML = `<div class="p-8 text-center text-red-500">Erro ao carregar produtos</div>`;
+    alert("Erro ao carregar produtos");
+    products = [];
     return;
   }
 
@@ -72,8 +76,13 @@ const categories = ["Todas", "Destaques", "Bebé e criança", "Mulher", "Sustent
 function render() {
   const app = document.getElementById("app");
 
-  if (!products.length) {
+  if (!productsLoaded) {
     app.innerHTML = "<p class='p-4'>A carregar produtos...</p>";
+    return;
+  }
+
+  if (productsLoaded && products.length === 0) {
+    app.innerHTML = "<p class='p-4'>Sem produtos disponíveis.</p>";
     return;
   }
 
@@ -82,6 +91,7 @@ function render() {
   else if (view === "cart") renderCart(app);
   else if (view === "checkout") renderCheckout(app);
 
+  bindEvents();
   lucide.createIcons();
 }
 
@@ -120,22 +130,32 @@ function renderHome(app) {
             <h3 class="text-xs">${p.name}</h3>
             <p>${p.price}€</p>
 
-            <button onclick="viewProduct('${p.id}')"
+  <button data-action="view-product" data-id="${p.id}"
   class="mt-2 w-full border border-[#575244] text-[#575244] py-2 text-xs rounded hover:bg-[#575244] hover:text-white transition">
   Ver produto
 </button>
 
-<button onclick="viewProduct('${p.id}')"
+<button data-action="add-to-cart" data-id="${p.id}"
   class="mt-2 w-full bg-[#575244] text-white py-2 text-xs rounded hover:opacity-90 transition">
   Adicionar ao carrinho
 </button>
 
-          </div>
-        `).join("")}
-      </div>
-    </div>
-  `;
+function bindEvents() {
+  document.querySelectorAll('[data-action="view-product"]').forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.id;
+      viewProduct(id);
+    });
+  });
+
+  document.querySelectorAll('[data-action="add-to-cart"]').forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.id;
+      addToCart(id);
+    });
+  });
 }
+
 
 function renderHeader() {
   return `
@@ -164,90 +184,86 @@ function renderHeader() {
 function renderProduct(app) {
   if (!selectedProduct) {
     view = "home";
-    return render();
+    render();
+    return;
   }
 
   const p = selectedProduct;
-  const images = (p.image_url || '').split(',');
+  const images = (p.image_url || "").split(",").filter(Boolean);
 
   const outerFabrics = fabrics.filter(f => f.type === "outer");
   const liningFabrics = fabrics.filter(f => f.type === "lining");
 
-  ${cartMessage ? `<p class="mt-2 text-green-600 text-sm">${cartMessage}</p>` : ""}
+  const thumbnailsHTML = images.map((img, i) => `
+    <img src="${img}"
+      onclick="changeImage(${i})"
+      class="h-20 w-full object-cover rounded cursor-pointer border ${activeImage === i ? 'border-[#cfa05d]' : ''}">
+  `).join("");
 
-  
+  const exteriorHTML = outerFabrics.length
+    ? outerFabrics.map(f => `
+      <div onclick="selectExterior('${f.code}')"
+        class="cursor-pointer border-2 rounded-lg overflow-hidden ${selectedExterior === f.code ? 'border-[#cfa05d]' : 'border-transparent'}">
+        <img src="${f.image_url}" class="w-full h-20 object-cover">
+      </div>
+    `).join("")
+    : `<p class="text-xs text-gray-500">Sem tecidos disponíveis</p>`;
+
+  const liningHTML = p.has_lining
+    ? `
+      <h3 class="mt-4 font-semibold">Forro</h3>
+      <div class="grid grid-cols-4 gap-2 mt-2">
+        ${
+          liningFabrics.length
+            ? liningFabrics.map(f => `
+              <div onclick="selectLining('${f.code}')"
+                class="cursor-pointer border-2 rounded-lg overflow-hidden ${selectedLining === f.code ? 'border-[#cfa05d]' : 'border-transparent'}">
+                <img src="${f.image_url}" class="w-full h-20 object-cover">
+              </div>
+            `).join("")
+            : `<p class="text-xs text-gray-500">Sem forros disponíveis</p>`
+        }
+      </div>
+    `
+    : "";
+
   app.innerHTML = `
-  ${renderHeader()}
+    ${renderHeader()}
     <div class="p-4">
-
       <button onclick="view='home';render()" class="text-sm mb-4">← Voltar</button>
 
       <h1 class="text-xl font-bold mb-2">${p.name}</h1>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        <!-- IMAGEM PRINCIPAL -->
         <div>
-          <img src="${images[activeImage]}"
-            class="w-full h-[450px] object-cover rounded-xl">
+          <img src="${images[activeImage] || ''}" class="w-full h-[450px] object-cover rounded-xl">
         </div>
 
-        <!-- INFO -->
         <div>
-
-          <!-- THUMBNAILS -->
           <div class="grid grid-cols-4 gap-2 mb-4">
-            ${images.map((img, i) => `
-              <img src="${img}"
-                onclick="changeImage(${i})"
-                class="h-20 w-full object-cover rounded cursor-pointer border ${activeImage===i ? 'border-[#cfa05d]' : ''}">
-            `).join("")}
+            ${thumbnailsHTML}
           </div>
 
           <p class="text-lg font-bold text-[#cfa05d]">${p.price}€</p>
+          <p class="text-sm mt-2">${p.description || ""}</p>
 
-          <p class="text-sm mt-2">${p.description || ''}</p>
-<h3 class="mt-4 font-semibold text-[#575244]">
-  Escolhe as tuas personalizações
-</h3>
+          <h3 class="mt-4 font-semibold text-[#575244]">
+            Escolhe as tuas personalizações
+          </h3>
 
           <h3 class="mt-4 font-semibold">Exterior</h3>
+          <div class="grid grid-cols-4 gap-2 mt-2">
+            ${exteriorHTML}
+          </div>
 
-<div class="grid grid-cols-4 gap-2 mt-2">
-  ${outerFabrics.length ? outerFabrics.map(f => `
-    <div onclick="selectExterior('${f.code}')"
-      class="cursor-pointer border-2 rounded-lg overflow-hidden 
-      ${selectedExterior===f.code ? 'border-[#cfa05d]' : 'border-transparent'}">
+          ${liningHTML}
 
-      <img src="${f.image_url}" 
-        class="w-full h-20 object-cover">
-
-    </div>
-  `).join("") : "<p class='text-xs text-gray-500'>Sem tecidos disponíveis</p>"}
-</div>
-
-${p.has_lining ? `
-  <h3 class="mt-4 font-semibold">Forro</h3>
-
-  <div class="grid grid-cols-4 gap-2 mt-2">
-    ${liningFabrics.length ? liningFabrics.map(f => `
-      <div onclick="selectLining('${f.code}')"
-        class="cursor-pointer border-2 rounded-lg overflow-hidden 
-        ${selectedLining===f.code ? 'border-[#cfa05d]' : 'border-transparent'}">
-
-        <img src="${f.image_url}" 
-          class="w-full h-20 object-cover">
-
-      </div>
-    `).join("") : "<p class='text-xs text-gray-500'>Sem forros disponíveis</p>"}
-  </div>
-` : ""}
-
-          <button data-id="${p.id}" class="add-to-cart-btn">
-No er            class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
+          <button onclick="addToCart('${p.id}')"
+            class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
             Adicionar ao carrinho
           </button>
 
+          ${cartMessage ? `<p class="mt-2 text-green-600 text-sm">${cartMessage}</p>` : ""}
         </div>
       </div>
     </div>
