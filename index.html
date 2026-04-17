@@ -416,9 +416,13 @@ async function renderShippingOptions() {
   const options = await calculateShippingOptions();
 
   container.innerHTML = options.map(opt => `
-    <label class="flex justify-between items-center border p-2 rounded cursor-pointer">
+    <label class="flex justify-between items-center border p-2 rounded cursor-pointer ${opt.price === null ? 'opacity-50' : ''}">
       <div>
-        <input type="radio" name="shipping" value="${opt.method}" 
+        <input 
+          type="radio" 
+          name="shipping" 
+          value="${opt.method}" 
+          ${opt.price === null ? 'disabled' : ''}
           onchange="selectShipping('${opt.method}')">
         <span class="ml-2 font-semibold">${opt.method}</span>
         <p class="text-xs text-gray-500">${opt.delivery_time}</p>
@@ -616,34 +620,50 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
   
 async function createOrder(customer, cart, total) {
-
- const { data, error } = await window.supabaseClient
-  .from("orders")
-  .insert({
+  const orderPayload = {
     customer_name: customer.name,
     customer_email: customer.email,
-    total: total,
+    customer_phone: customer.phone || null,
+    address: customer.address || null,
+    city: customer.city || null,
+    postal_code: customer.postal || null,
+    country: customer.country || null,
+    inpost_address: customer.inpost || null,
+    total: Number(total) || 0,
     status: "pendente",
-    shipping_method: selectedShipping,
-  })
-  .select()
-  .single();
+    shipping_method: selectedShipping
+  };
+
+  const { data, error } = await window.supabaseClient
+    .from("orders")
+    .insert(orderPayload)
+    .select()
+    .single();
 
   if (error) {
-    alert("Erro ao criar encomenda");
+    console.error("Erro ao criar encomenda:", error);
+    alert("Erro ao criar encomenda: " + error.message);
     return;
   }
 
   const items = cart.map(item => ({
-  order_id: data.id,
-  product_name: item.name,
-  quantity: item.qty,
-  price: item.price,
-  exterior: item.exterior,
-  lining: item.lining
-}));
+    order_id: data.id,
+    product_name: item.name,
+    quantity: item.qty,
+    price: Number(item.price) || 0,
+    exterior: item.exterior || null,
+    lining: item.lining || null
+  }));
 
-  await window.supabaseClient.from("order_items").insert(items);
+  const { error: itemsError } = await window.supabaseClient
+    .from("order_items")
+    .insert(items);
+
+  if (itemsError) {
+    console.error("Erro ao guardar artigos:", itemsError);
+    alert("Encomenda criada, mas houve erro ao guardar os artigos.");
+    return;
+  }
 
   alert("Encomenda criada com sucesso!");
 }
