@@ -649,43 +649,56 @@ async function createOrder(customer, cart, total) {
 }
 
 async function calculateShippingOptions() {
-  const weight = getCartWeight();
+  const weight = Number(getCartWeight()) || 0;
   const dimensions = getCartDimensions();
+
+  const length = Number(dimensions.length) || 0;
+  const height = Number(dimensions.height) || 0;
+  const width = Number(dimensions.width) || 0;
 
   const { data, error } = await window.supabaseClient
     .from("shipping_rules")
     .select("*");
 
   if (error) {
-    console.error("Erro ao carregar envios", error);
+    console.error("Erro ao carregar envios:", error);
     return [];
   }
 
-  const methods = ["CTT Correio Verde", "CTT Correio Registado", "InPost - Locker ou Ponto Pack"];
+  console.log("PESO:", weight);
+  console.log("DIMENSÕES:", { length, height, width });
+  console.log("REGRAS ENVIO:", data);
+
+  const methods = [
+    "CTT Correio Verde",
+    "CTT Correio Registado",
+    "InPost - Locker ou Ponto Pack"
+  ];
 
   return methods.map(method => {
-
     const validRules = data.filter(r =>
-  r.method === method &&
-  weight >= r.min_weight &&
-  weight <= r.max_weight &&
-  dimensions.height >= r.min_height &&
-  dimensions.height <= r.max_height &&
-  dimensions.length >= r.min_length &&
-  dimensions.length <= r.max_length &&
-  dimensions.width >= r.min_width &&
-  dimensions.width <= r.max_width
-);
+      r.method === method &&
+      weight >= Number(r.min_weight || 0) &&
+      weight <= Number(r.max_weight || 999999) &&
+      height >= Number(r.min_height || 0) &&
+      height <= Number(r.max_height || 999999) &&
+      length >= Number(r.min_length || 0) &&
+      length <= Number(r.max_length || 999999) &&
+      width >= Number(r.min_width || 0) &&
+      width <= Number(r.max_width || 999999)
+    );
+
+    console.log("Método:", method, "Regras válidas:", validRules);
 
     const rule = validRules[0];
+
     return {
       method,
-      price: rule ? rule.price : null,
+      price: rule ? Number(rule.price) : null,
       delivery_time: rule ? rule.delivery_time : "-"
     };
   });
 }
-
 
 async function submitOrder() {
 
