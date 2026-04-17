@@ -107,38 +107,45 @@ function renderHome(app) {
   }
 
   app.innerHTML = `
-  ${renderHeader()}
-      <img src="https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png" style="height:100px;">
-     <div class="p-4">
-
+    ${renderHeader()}
+    <img src="[res.cloudinary.com](https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png)" style="height:100px;">
     <div class="p-4">
-      <div class="flex gap-2 overflow-x-auto mb-6">
-        ${categories.map(cat => `
-          <button onclick="selectCategory('${cat}')"
-            class="px-1 py-4 rounded-full border ${selectedCategory===cat?'bg-[#cfa05d] text-white':''}">
-            ${cat}
-          </button>
-        `).join("")}
+
+      <div class="p-4">
+        <div class="flex gap-2 overflow-x-auto mb-6">
+          ${categories.map(cat => `
+            <button onclick="selectCategory('${cat}')"
+              class="px-1 py-4 rounded-full border ${selectedCategory === cat ? 'bg-[#cfa05d] text-white' : ''}">
+              ${cat}
+            </button>
+          `).join("")}
+        </div>
+
+        <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          ${filtered.map(p => `
+            <div class="bg-white p-2 rounded-xl shadow-sm">
+              <img src="${(p.image_url || '').split(',')[0]}" 
+                class="w-full h-60 object-cover rounded">
+
+              <h3 class="text-xs">${p.name}</h3>
+              <p>${p.price}€</p>
+
+              <button onclick="viewProduct('${p.id}')"
+                class="mt-2 w-full border border-[#575244] text-[#575244] py-2 text-xs rounded hover:bg-[#575244] hover:text-white transition">
+                Ver produto
+              </button>
+
+              <button onclick="addToCart('${p.id}')"
+                class="mt-2 w-full bg-[#575244] text-white py-2 text-xs rounded hover:opacity-90 transition">
+                Adicionar ao carrinho
+              </button>
+            </div>
+          `).join("")}
+        </div>
       </div>
-
-      <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        ${filtered.map(p => `
-          <div class="bg-white p-2 rounded-xl shadow-sm">
-            <img src="${(p.image_url || '').split(',')[0]}" 
-              class="w-full h-60 object-cover rounded">
-
-            <h3 class="text-xs">${p.name}</h3>
-            <p>${p.price}€</p>
-
-  <button data-action="view-product" data-id="${p.id}"
-  class="mt-2 w-full border border-[#575244] text-[#575244] py-2 text-xs rounded hover:bg-[#575244] hover:text-white transition">
-  Ver produto
-</button>
-
-<button data-action="add-to-cart" data-id="${p.id}"
-  class="mt-2 w-full bg-[#575244] text-white py-2 text-xs rounded hover:opacity-90 transition">
-  Adicionar ao carrinho
-</button>
+    </div>
+  `;
+}
 
 function bindEvents() {
   document.querySelectorAll('[data-action="view-product"]').forEach(button => {
@@ -213,15 +220,14 @@ function renderProduct(app) {
     ? `
       <h3 class="mt-4 font-semibold">Forro</h3>
       <div class="grid grid-cols-4 gap-2 mt-2">
-        ${
-          liningFabrics.length
-            ? liningFabrics.map(f => `
-              <div onclick="selectLining('${f.code}')"
-                class="cursor-pointer border-2 rounded-lg overflow-hidden ${selectedLining === f.code ? 'border-[#cfa05d]' : 'border-transparent'}">
-                <img src="${f.image_url}" class="w-full h-20 object-cover">
-              </div>
-            `).join("")
-            : `<p class="text-xs text-gray-500">Sem forros disponíveis</p>`
+        ${liningFabrics.length
+          ? liningFabrics.map(f => `
+            <div onclick="selectLining('${f.code}')"
+              class="cursor-pointer border-2 rounded-lg overflow-hidden ${selectedLining === f.code ? 'border-[#cfa05d]' : 'border-transparent'}">
+              <img src="${f.image_url}" class="w-full h-20 object-cover">
+            </div>
+          `).join("")
+          : `<p class="text-xs text-gray-500">Sem forros disponíveis</p>`
         }
       </div>
     `
@@ -269,7 +275,7 @@ function renderProduct(app) {
     </div>
   `;
 }
-  
+
 function renderCart(app) {
   app.innerHTML = `
   ${renderHeader()}
