@@ -620,19 +620,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
   
 async function createOrder(customer, cart, total) {
-  const orderPayload = {
-    customer_name: customer.name,
-    customer_email: customer.email,
-    customer_phone: customer.phone || null,
-    address: customer.address || null,
-    city: customer.city || null,
-    postal_code: customer.postal || null,
-    country: customer.country || null,
-    inpost_address: customer.inpost || null,
-    total: Number(total) || 0,
-    status: "pendente",
-    shipping_method: selectedShipping
-  };
+const orderPayload = {
+  customer_name: customer.name,
+  customer_email: customer.email,
+  customer_phone: customer.phone || null,
+  address: customer.address || null,
+  city: customer.city || null,
+  postal_code: customer.postal || null,
+  country: customer.country || null,
+  inpost_address: customer.inpost || null,
+  subtotal: cart.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.qty) || 0), 0),
+  shipping_price: Number(shippingPrice) || 0,
+  total: Number(total) || 0,
+  status: "pendente",
+  shipping_method: selectedShipping
+};
 
   const { data, error } = await window.supabaseClient
     .from("orders")
@@ -648,8 +650,9 @@ async function createOrder(customer, cart, total) {
 
   const items = cart.map(item => ({
     order_id: data.id,
+    product_id: item.id,
     product_name: item.name,
-    quantity: item.qty,
+    quantity: Number(item.qty) || 1,
     price: Number(item.price) || 0,
     exterior: item.exterior || null,
     lining: item.lining || null
@@ -660,10 +663,10 @@ async function createOrder(customer, cart, total) {
     .insert(items);
 
   if (itemsError) {
-    console.error("Erro ao guardar artigos:", itemsError);
-    alert("Encomenda criada, mas houve erro ao guardar os artigos.");
-    return;
-  }
+  console.error("Erro ao guardar artigos:", itemsError);
+  alert("Encomenda criada, mas houve erro ao guardar os artigos: " + itemsError.message);
+  return;
+}
 
   alert("Encomenda criada com sucesso!");
 }
