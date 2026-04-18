@@ -455,28 +455,41 @@ async function startCheckout() {
       return;
     }
 
+    // 🔴 Validar campos mínimos
+    const name = document.querySelector('#name').value;
+    const email = document.querySelector('#email').value;
+
+    if (!name || !email) {
+      alert("Preenche nome e email");
+      return;
+    }
+
     const orderData = {
       customer: {
-        name: document.querySelector('#name')?.value || '',
-        email: document.querySelector('#email')?.value || '',
-        phone: document.querySelector('#phone')?.value || ''
+        name,
+        email,
+        phone: document.querySelector('#phone').value || ''
       },
 
       shipping: {
         method: selectedShipping,
         price: shippingPrice,
+
         address: {
-          address: document.querySelector('#address')?.value || '',
-          city: document.querySelector('#city')?.value || '',
-          postal_code: document.querySelector('#postal')?.value || '',
-          country: 'PT'
-        }
+          address: document.querySelector('#address').value || '',
+          city: document.querySelector('#city').value || '',
+          postal_code: document.querySelector('#postal').value || '',
+          country: document.querySelector('#country').value || 'PT'
+        },
+
+        // 🔴 PREPARADO PARA INPOST
+        inpost_address: window.selectedInpostPoint || null
       },
 
       items: cart.map(item => ({
         product_id: item.id,
         product_name: item.name,
-        quantity: item.quantity,
+        quantity: item.qty, // 🔴 AQUI ESTAVA UM BUG ANTES
         price: item.price,
         exterior: item.exterior || null,
         lining: item.lining || null
@@ -504,7 +517,6 @@ async function startCheckout() {
     alert("Erro inesperado");
   }
 }
-
 // FUNÇÕES
 function selectCategory(cat) {
   selectedCategory = cat;
