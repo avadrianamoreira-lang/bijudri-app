@@ -16,12 +16,11 @@ export default async function handler(req, res) {
   try {
     const { customer, shipping, items } = req.body;
 
-    // 🔴 1. Validação mínima
     if (!items || items.length === 0) {
       return res.status(400).json({ error: 'Carrinho vazio' });
     }
 
-    // 🔴 2. Calcular total no backend (NUNCA confiar no frontend)
+    // 🔴 Calcular total no backend
     let subtotal = 0;
 
     for (const item of items) {
@@ -31,13 +30,18 @@ export default async function handler(req, res) {
     const shippingPrice = shipping.price || 0;
     const total = subtotal + shippingPrice;
 
-    // 🔴 3. Criar encomenda (orders)
+    // 🔴 Criar encomenda (ALINHADO COM AS TUAS COLUNAS)
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert([{
         customer_name: customer.name,
         customer_email: customer.email,
         customer_phone: customer.phone,
+
+        address: shipping.address.address,
+        city: shipping.address.city,
+        postal_code: shipping.address.postal_code,
+        country: shipping.address.country,
 
         shipping_method: shipping.method,
         shipping_price: shippingPrice,
@@ -56,7 +60,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Erro ao criar encomenda' });
     }
 
-    // 🔴 4. Criar order_items
+    // 🔴 Criar order_items
     const orderItems = items.map(item => ({
       order_id: order.id,
       product_id: item.product_id,
@@ -76,7 +80,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Erro ao criar items' });
     }
 
-    // 🔴 5. Criar Stripe Checkout Session
+    // 🔴 Stripe session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
 
@@ -91,8 +95,6 @@ export default async function handler(req, res) {
           },
           quantity: item.quantity
         })),
-
-        // envio como item separado
         {
           price_data: {
             currency: 'eur',
@@ -115,7 +117,7 @@ export default async function handler(req, res) {
       }
     });
 
-    // 🔴 6. Guardar session_id
+    // 🔴 Guardar session ID
     await supabase
       .from('orders')
       .update({
@@ -124,7 +126,6 @@ export default async function handler(req, res) {
       })
       .eq('id', order.id);
 
-    // 🔴 7. Devolver URL
     return res.status(200).json({
       url: session.url
     });
