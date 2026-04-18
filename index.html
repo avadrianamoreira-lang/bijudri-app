@@ -450,22 +450,29 @@ async function selectShipping(method) {
 
 async function startCheckout() {
   try {
+    if (!cart.length) {
+      alert("Carrinho vazio");
+      return;
+    }
+
     const orderData = {
       customer: {
-        name: document.querySelector('#name').value,
-        email: document.querySelector('#email').value,
-        phone: document.querySelector('#phone').value
+        name: document.querySelector('#name')?.value || '',
+        email: document.querySelector('#email')?.value || '',
+        phone: document.querySelector('#phone')?.value || ''
       },
+
       shipping: {
-        method: selectedShippingMethod,
+        method: selectedShipping,
         price: shippingPrice,
         address: {
-          line1: document.querySelector('#address').value,
-          city: document.querySelector('#city').value,
-          postal_code: document.querySelector('#postal').value,
+          address: document.querySelector('#address')?.value || '',
+          city: document.querySelector('#city')?.value || '',
+          postal_code: document.querySelector('#postal')?.value || '',
           country: 'PT'
         }
       },
+
       items: cart.map(item => ({
         product_id: item.id,
         product_name: item.name,
@@ -476,12 +483,9 @@ async function startCheckout() {
       }))
     };
 
-    // 🔹 Chamada à tua API
     const res = await fetch('/api/create-checkout-session', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData)
     });
 
@@ -489,16 +493,15 @@ async function startCheckout() {
 
     if (!res.ok) {
       console.error(data);
-      alert('Erro ao iniciar pagamento');
+      alert("Erro ao iniciar pagamento");
       return;
     }
 
-    // 🔹 Redireciona para Stripe
     window.location.href = data.url;
 
   } catch (err) {
     console.error(err);
-    alert('Erro inesperado');
+    alert("Erro inesperado");
   }
 }
 
