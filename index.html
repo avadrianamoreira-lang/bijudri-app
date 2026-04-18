@@ -398,11 +398,9 @@ function renderCheckout(app) {
     </div>
 
     <!-- BOTÃO -->
-    <button onclick="submitOrder()" 
-      class="mt-6 w-full bg-[#575244] text-white py-3 rounded-xl">
-      Confirmar Encomenda
-    </button>
-
+    <button onclick="startCheckout()">
+  Confirmar e pagar
+</button>
   </div>
   `;
 
@@ -448,6 +446,60 @@ async function selectShipping(method) {
   }
 
   renderCheckoutSummary();
+}
+
+async function startCheckout() {
+  try {
+    const orderData = {
+      customer: {
+        name: document.querySelector('#name').value,
+        email: document.querySelector('#email').value,
+        phone: document.querySelector('#phone').value
+      },
+      shipping: {
+        method: selectedShippingMethod,
+        price: shippingPrice,
+        address: {
+          line1: document.querySelector('#address').value,
+          city: document.querySelector('#city').value,
+          postal_code: document.querySelector('#postal').value,
+          country: 'PT'
+        }
+      },
+      items: cart.map(item => ({
+        product_id: item.id,
+        product_name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        exterior: item.exterior || null,
+        lining: item.lining || null
+      }))
+    };
+
+    // 🔹 Chamada à tua API
+    const res = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(orderData)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error(data);
+      alert('Erro ao iniciar pagamento');
+      return;
+    }
+
+    // 🔹 Redireciona para Stripe
+    window.location.href = data.url;
+
+  } catch (err) {
+    console.error(err);
+    alert('Erro inesperado');
+  }
 }
 
 // FUNÇÕES
