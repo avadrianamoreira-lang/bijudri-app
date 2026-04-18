@@ -39,9 +39,12 @@ export default async function handler(req, res) {
         customer_phone: customer.phone,
 
         address: shipping.address.address,
-        city: shipping.address.city,
-        postal_code: shipping.address.postal_code,
-        country: shipping.address.country,
+city: shipping.address.city,
+postal_code: shipping.address.postal_code,
+country: shipping.address.country,
+
+inpost_address: shipping.inpost_address,
+shipping_address: shipping.address.address,
 
         shipping_method: shipping.method,
         shipping_price: shippingPrice,
