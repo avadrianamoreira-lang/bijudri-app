@@ -340,10 +340,11 @@ function renderCart(app) {
     <!-- CTA -->
     ${
       cart.length > 0
-        ? `<button onclick="goToCheckout()" 
-            class="mt-6 w-full bg-[#575244] text-white py-3 rounded-xl">
-            Finalizar Encomenda
-          </button>`
+        ? `<button onclick="startCheckout()" 
+  class="mt-6 w-full bg-[#575244] text-white py-3 rounded-xl">
+  Confirmar e pagar
+</button>
+`
         : ""
     }
 
@@ -448,83 +449,6 @@ async function selectShipping(method) {
   renderCheckoutSummary();
 }
 
-async function startCheckout() {
-  try {
-    if (!cart.length) {
-      alert("Carrinho vazio");
-      return;
-    }
-
-    // 🔴 Validar campos mínimos
-    const name = document.querySelector('#name').value;
-    const email = document.querySelector('#email').value;
-
-    if (!name || !email) {
-      alert("Preenche nome e email");
-      return;
-    }
-
-    const orderData = {
-      customer: {
-        name,
-        email,
-        phone: document.querySelector('#phone').value || ''
-      },
-
-      shipping: {
-        method: selectedShipping,
-        price: shippingPrice,
-
-        address: {
-          address: document.querySelector('#address').value || '',
-          city: document.querySelector('#city').value || '',
-          postal_code: document.querySelector('#postal').value || '',
-          country: document.querySelector('#country').value || 'PT'
-        },
-
-        // 🔴 PREPARADO PARA INPOST
-        inpost_address: window.selectedInpostPoint || null
-      },
-
-      items: cart.map(item => ({
-        product_id: item.id,
-        product_name: item.name,
-        quantity: item.qty, // 🔴 AQUI ESTAVA UM BUG ANTES
-        price: item.price,
-        exterior: item.exterior || null,
-        lining: item.lining || null
-      }))
-    };
-
-    const res = await fetch('/api/create-checkout-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orderData)
-    });
-
-    let data;
-
-try {
-  data = await res.json();
-} catch {
-  const text = await res.text();
-  console.error("Resposta não JSON:", text);
-  alert("Erro no servidor");
-  return;
-}
-    if (!res.ok) {
-      console.error(data);
-      alert("Erro ao iniciar pagamento");
-      return;
-    }
-
-    window.location.href = data.url;
-
-  } catch (err) {
-    console.error(err);
-    alert("Erro inesperado");
-  }
-}
 // FUNÇÕES
 function selectCategory(cat) {
   selectedCategory = cat;
@@ -804,7 +728,7 @@ async function calculateShippingOptions() {
   });
 }
 
-async function submitOrder() {
+async function startCheckout() {
   const customer = {
     name: document.getElementById("name").value.trim(),
     email: document.getElementById("email").value.trim(),
@@ -817,12 +741,15 @@ async function submitOrder() {
   };
 
   if (!customer.name || !customer.email || !selectedShipping) {
-    alert("Preenche os campos obrigatórios");
+    alert("Preenche os campos obrigatórios.");
     return;
   }
 
-  if (selectedShipping === "InPost - Locker ou Ponto Pack" && !customer.inpost) {
-    alert("Indica a morada do ponto InPost");
+  if (
+    selectedShipping === "InPost - Locker ou Ponto Pack" &&
+    !customer.inpost
+  ) {
+    alert("Indica a morada do ponto InPost.");
     return;
   }
 
@@ -834,17 +761,37 @@ async function submitOrder() {
     return;
   }
 
-  const subtotal = cart.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.qty) || 0), 0);
-  shippingPrice = Number(selected.price) || 0;
-  const final = subtotal + shippingPrice;
+  const subtotal = cart.reduce(
+    (a, i) => a + (Number(i.price) || 0) * (Number(i.qty) || 0),
+    0
+  );
 
-  await createOrder(customer, cart, final, subtotal, shippingPrice);
+  const shipping = Number(selected.price) || 0;
+  const total = subtotal + shipping;
 
-  cart = [];
-  selectedShipping = null;
-  shippingPrice = 0;
-  view = "home";
-  render();
+  const response = await fetch("/api/create-checkout-session", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      customer,
+      cart,
+      shippingMethod: selectedShipping,
+      shippingPrice: shipping,
+      subtotal,
+      total
+    })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    alert("Erro ao iniciar pagamento: " + (data.error || "Erro desconhecido"));
+    return;
+  }
+
+  window.location.href = data.url;
 }
 
 </script>
