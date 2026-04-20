@@ -1,5 +1,5 @@
-import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
+import Stripe from "stripe";
+import { createClient } from "@supabase/supabase-js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -8,135 +8,151 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+function generateOrderNumber() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const random = Math.floor(1000 + Math.random() * 9000);
+  return `BJ-${year}${month}${day}-${random}`;
+}
+
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { customer, shipping, items } = req.body;
+    const {
+      customer,
+      cart,
+      shippingMethod,
+      shippingPrice,
+      subtotal,
+      total
+    } = req.body;
 
-    if (!items || items.length === 0) {
-      return res.status(400).json({ error: 'Carrinho vazio' });
+    if (!customer || !cart || !cart.length || !shippingMethod) {
+      return res.status(400).json({ error: "Dados em falta." });
     }
 
-    // 🔴 Calcular total no backend
-    let subtotal = 0;
+    const numericSubtotal = Number(subtotal) || 0;
+    const numericShipping = Number(shippingPrice) || 0;
+    const numericTotal = Number(total) || 0;
 
-    for (const item of items) {
-      subtotal += item.price * item.quantity;
-    }
+    const orderNumber = generateOrderNumber();
 
-    const shippingPrice = shipping.price || 0;
-    const total = subtotal + shippingPrice;
+    const orderPayload = {
+      order_number: orderNumber,
+      customer_name: customer.name || null,
+      customer_email: customer.email || null,
+      customer_phone: customer.phone || null,
+      address: customer.address || null,
+      city: customer.city || null,
+      postal_code: customer.postal || null,
+      country: customer.country || null,
+      inpost_address: customer.inpost || null,
+      subtotal: numericSubtotal,
+      shipping_price: numericShipping,
+      total: numericTotal,
+      shipping_method: shippingMethod,
+      status: "pending_payment",
+      payment_status: "pending",
+      payment_method: "stripe",
+      email_sent: false
+    };
 
-    // 🔴 Criar encomenda (ALINHADO COM AS TUAS COLUNAS)
     const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert([{
-        customer_name: customer.name,
-        customer_email: customer.email,
-        customer_phone: customer.phone,
-
-        address: shipping.address.address,
-city: shipping.address.city,
-postal_code: shipping.address.postal_code,
-country: shipping.address.country,
-
-inpost_address: shipping.inpost_address,
-shipping_address: shipping.address.address,
-
-        shipping_method: shipping.method,
-        shipping_price: shippingPrice,
-
-        subtotal,
-        total,
-
-        status: 'pending_payment',
-        payment_status: 'pending'
-      }])
+      .from("orders")
+      .insert(orderPayload)
       .select()
       .single();
 
     if (orderError) {
-      console.error(orderError);
-      return res.status(500).json({ error: 'Erro ao criar encomenda' });
+      console.error("Erro ao criar encomenda:", orderError);
+      return res.status(400).json({ error: orderError.message });
     }
 
-    // 🔴 Criar order_items
-    const orderItems = items.map(item => ({
+    const itemsPayload = cart.map(item => ({
       order_id: order.id,
-      product_id: item.product_id,
-      product_name: item.product_name,
-      quantity: item.quantity,
-      price: item.price,
-      exterior: item.exterior,
-      lining: item.lining
+      product_id: item.id,
+      product_name: item.name,
+      quantity: Number(item.qty) || 1,
+      price: Number(item.price) || 0,
+      exterior: item.exterior || null,
+      lining: item.lining || null
     }));
 
     const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
+      .from("order_items")
+      .insert(itemsPayload);
 
     if (itemsError) {
-      console.error(itemsError);
-      return res.status(500).json({ error: 'Erro ao criar items' });
+      console.error("Erro ao guardar artigos:", itemsError);
+
+      await supabase
+        .from("orders")
+        .delete()
+        .eq("id", order.id);
+
+      return res.status(400).json({ error: itemsError.message });
     }
 
-    // 🔴 Stripe session
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-
+      mode: "payment",
+      customer_email: customer.email,
+      success_url: `${process.env.APP_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.APP_URL}/cancel.html`,
+      metadata: {
+        order_id: order.id,
+        order_number: orderNumber
+      },
       line_items: [
-        ...items.map(item => ({
+        ...cart.map(item => ({
           price_data: {
-            currency: 'eur',
+            currency: "eur",
             product_data: {
-              name: item.product_name
+              name: item.name,
+              description: [
+                item.exterior ? `Exterior: ${item.exterior}` : null,
+                item.lining ? `Forro: ${item.lining}` : null
+              ].filter(Boolean).join(" | ")
             },
-            unit_amount: Math.round(item.price * 100)
+            unit_amount: Math.round((Number(item.price) || 0) * 100)
           },
-          quantity: item.quantity
+          quantity: Number(item.qty) || 1
         })),
         {
           price_data: {
-            currency: 'eur',
+            currency: "eur",
             product_data: {
-              name: `Envio (${shipping.method})`
+              name: `Envio - ${shippingMethod}`
             },
-            unit_amount: Math.round(shippingPrice * 100)
+            unit_amount: Math.round(numericShipping * 100)
           },
           quantity: 1
         }
-      ],
-
-      mode: 'payment',
-
-      success_url: `${process.env.APP_URL}/success.html`,
-      cancel_url: `${process.env.APP_URL}/cancel.html`,
-
-      metadata: {
-        order_id: order.id
-      }
+      ]
     });
 
-    // 🔴 Guardar session ID
-    await supabase
-      .from('orders')
+    const { error: updateError } = await supabase
+      .from("orders")
       .update({
-        stripe_session_id: session.id,
-        payment_method: 'stripe'
+        stripe_session_id: session.id
       })
-      .eq('id', order.id);
+      .eq("id", order.id);
+
+    if (updateError) {
+      console.error("Erro ao guardar stripe_session_id:", updateError);
+      return res.status(400).json({ error: updateError.message });
+    }
 
     return res.status(200).json({
       url: session.url
     });
-
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      error: 'Erro interno'
-    });
+  } catch (error) {
+    console.error("Erro geral create-checkout-session:", error);
+    return res.status(500).json({ error: error.message });
   }
 }
+
