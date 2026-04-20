@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Pagamento cancelado</title>
+</head>
+<body>
+  <h1>Pagamento cancelado</h1>
+  <p>O pagamento foi cancelado. Podes voltar ao checkout e tentar novamente.</p>
+</body>
+</html>
