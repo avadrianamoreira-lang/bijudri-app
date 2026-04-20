@@ -729,16 +729,27 @@ async function calculateShippingOptions() {
 }
 
 async function startCheckout() {
+  console.log("name", document.getElementById("name"));
+  console.log("email", document.getElementById("email"));
+  console.log("phone", document.getElementById("phone"));
+  console.log("address", document.getElementById("address"));
+  console.log("city", document.getElementById("city"));
+  console.log("postal", document.getElementById("postal"));
+  console.log("country", document.getElementById("country"));
+  console.log("inpost_address", document.getElementById("inpost_address"));
+
   const customer = {
-    name: document.getElementById("name").value.trim(),
-    email: document.getElementById("email").value.trim(),
-    phone: document.getElementById("phone").value.trim(),
-    address: document.getElementById("address").value.trim(),
-    city: document.getElementById("city").value.trim(),
-    postal: document.getElementById("postal").value.trim(),
-    country: document.getElementById("country").value.trim(),
-    inpost: document.getElementById("inpost_address").value.trim()
+    name: document.getElementById("name")?.value.trim() || "",
+    email: document.getElementById("email")?.value.trim() || "",
+    phone: document.getElementById("phone")?.value.trim() || "",
+    address: document.getElementById("address")?.value.trim() || "",
+    city: document.getElementById("city")?.value.trim() || "",
+    postal: document.getElementById("postal")?.value.trim() || "",
+    country: document.getElementById("country")?.value.trim() || "",
+    inpost: document.getElementById("inpost_address")?.value.trim() || ""
   };
+
+  console.log("customer", customer);
 
   if (!customer.name || !customer.email || !selectedShipping) {
     alert("Preenche os campos obrigatórios.");
@@ -793,6 +804,7 @@ async function startCheckout() {
 
   window.location.href = data.url;
 }
+
 
 </script>
 
