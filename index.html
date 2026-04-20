@@ -107,7 +107,7 @@ function renderHome(app) {
     ${renderHeader()}
 
     <div class="p-4">
-      <img src="[res.cloudinary.com](https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png)">
+      <img src="[res.cloudinary.com](https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png)" style="height:100px;" class="mb-4">
 
       <div class="flex gap-2 overflow-x-auto mb-6">
         ${categories.map(cat => `
@@ -767,29 +767,48 @@ async function startCheckout() {
   const shipping = Number(selected.price) || 0;
   const total = subtotal + shipping;
 
-  const response = await fetch("/api/create-checkout-session", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      customer,
-      cart,
-      shippingMethod: selectedShipping,
-      shippingPrice: shipping,
-      subtotal,
-      total
-    })
-  });
+  try {
+    const response = await fetch("/api/create-checkout-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        customer,
+        cart,
+        shippingMethod: selectedShipping,
+        shippingPrice: shipping,
+        subtotal,
+        total
+      })
+    });
 
-  const data = await response.json();
+    const text = await response.text();
+    let data = {};
 
-  if (!response.ok) {
-    alert("Erro ao iniciar pagamento: " + (data.error || "Erro desconhecido"));
-    return;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.error("Resposta não-JSON da API:", text);
+      alert("A rota /api/create-checkout-session não foi encontrada ou devolveu HTML em vez de JSON.");
+      return;
+    }
+
+    if (!response.ok) {
+      alert("Erro ao iniciar pagamento: " + (data.error || "Erro desconhecido"));
+      return;
+    }
+
+    if (!data.url) {
+      alert("A API respondeu sem URL de checkout.");
+      return;
+    }
+
+    window.location.href = data.url;
+  } catch (error) {
+    console.error("Erro no startCheckout:", error);
+    alert("Erro ao ligar ao checkout.");
   }
-
-  window.location.href = data.url;
 }
 
 </script>
