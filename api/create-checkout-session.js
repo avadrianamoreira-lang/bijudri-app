@@ -113,8 +113,6 @@ if (
   (!appUrl.startsWith("http://") && !appUrl.startsWith("https://"))
 ) {
   return res.status(500).json({ error: `APP_URL inválida ou em falta: ${appUrl || "undefined"}` });
-  success_url: `${appUrl}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-cancel_url: `${appUrl}/cancel.html`,
 }
 
 
