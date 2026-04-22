@@ -814,6 +814,24 @@ async function startCheckout() {
   }
 }
 
+async function goToPayment() {
+  const response = await fetch("/api/create-checkout-session", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      cart,
+      customer,
+      shippingPrice
+    })
+  });
+
+  const data = await response.json();
+
+  window.location.href = data.url;
+}
+
 </script>
 
 </body>
