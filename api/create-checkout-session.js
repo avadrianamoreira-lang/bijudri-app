@@ -98,12 +98,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: itemsError.message });
     }
 
-const appUrl = process.env.APP_URL;
-console.log("APP_URL recebida:", appUrl);
+const host = req.headers.host;
+const protocol = host && host.includes("localhost") ? "http" : "https";
+const fallbackUrl = host ? `${protocol}://${host}` : "";
+const appUrl = process.env.APP_URL || fallbackUrl;
 
-if (!appUrl || typeof appUrl !== "string" || !appUrl.startsWith("http://") && !appUrl.startsWith("https://")) {
+console.log("APP_URL env:", process.env.APP_URL);
+console.log("Fallback URL:", fallbackUrl);
+console.log("Final appUrl:", appUrl);
+
+if (
+  !appUrl ||
+  typeof appUrl !== "string" ||
+  (!appUrl.startsWith("http://") && !appUrl.startsWith("https://"))
+) {
   return res.status(500).json({ error: `APP_URL inválida ou em falta: ${appUrl || "undefined"}` });
 }
+
 
 const session = await stripe.checkout.sessions.create({
   mode: "payment",
