@@ -423,7 +423,7 @@ async function renderShippingOptions() {
           name="shipping" 
           value="${opt.method}" 
           ${opt.price === null ? 'disabled' : ''}
-          onchange="selectShipping('${opt.method}')">
+          onchange="selectShipping('${opt.method}', ${opt.price})">
         <span class="ml-2 font-semibold">${opt.method}</span>
         <p class="text-xs text-gray-500">${opt.delivery_time}</p>
       </div>
@@ -434,8 +434,12 @@ async function renderShippingOptions() {
   `).join("");
 }
 
-function selectShipping(method) {
+function selectShipping(method, price) {
   selectedShipping = method;
+  shippingPrice = Number(price) || 0;
+
+  render();
+}
 
   const inpostField = document.getElementById("inpost_address");
 
@@ -764,7 +768,7 @@ async function startCheckout() {
   );
 
   const shipping = Number(selected.price) || 0;
-  const total = subtotal + shipping;
+  const total = subtotal + shippingPrice;
 
   try {
     const response = await fetch("/api/create-checkout-session", {
