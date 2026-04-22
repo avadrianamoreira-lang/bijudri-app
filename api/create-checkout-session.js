@@ -98,11 +98,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: itemsError.message });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      customer_email: customer.email,
-      success_url: `${process.env.APP_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.APP_URL}/cancel.html`,
+    const appUrl = process.env.APP_URL;
+
+if (!appUrl || !appUrl.startsWith("http")) {
+  return res.status(500).json({ error: "APP_URL inválida ou em falta." });
+}
+
+const session = await stripe.checkout.sessions.create({
+  mode: "payment",
+  customer_email: customer.email,
+  success_url: `${appUrl}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+  cancel_url: `${appUrl}/cancel.html`,
       metadata: {
         order_id: order.id,
         order_number: orderNumber
