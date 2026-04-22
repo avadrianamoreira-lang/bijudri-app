@@ -98,10 +98,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: itemsError.message });
     }
 
-    const appUrl = process.env.APP_URL;
+const appUrl = process.env.APP_URL;
+console.log("APP_URL recebida:", appUrl);
 
-if (!appUrl || !appUrl.startsWith("http")) {
-  return res.status(500).json({ error: "APP_URL inválida ou em falta." });
+if (!appUrl || typeof appUrl !== "string" || !appUrl.startsWith("http://") && !appUrl.startsWith("https://")) {
+  return res.status(500).json({ error: `APP_URL inválida ou em falta: ${appUrl || "undefined"}` });
 }
 
 const session = await stripe.checkout.sessions.create({
