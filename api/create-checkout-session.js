@@ -18,6 +18,7 @@ function generateOrderNumber() {
 }
 
 export default async function handler(req, res) {
+  try {
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -35,7 +36,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing body" });
   }
   
-  const { cart, customer, shippingPrice } = body;
+  const { cart, customer, shippingPrice, subtotal, total, shippingMethod } = body;
 
   if (!cart || !customer) {
     return res.status(400).json({ error: "Missing data" });
