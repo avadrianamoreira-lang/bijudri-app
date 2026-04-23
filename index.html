@@ -443,7 +443,9 @@ function selectShipping(method, price) {
 
   const inpostField = document.getElementById("inpost_address");
 
-  if (!inpostField) return;
+  if (!inpostField) { return;
+  }
+}
 
   if (method === "InPost - Locker ou Ponto Pack") {
     inpostField.classList.remove("hidden");
@@ -451,7 +453,6 @@ function selectShipping(method, price) {
     inpostField.classList.add("hidden");
     inpostField.value = "";
   }
-}
 
 // FUNÇÕES
 function selectCategory(cat) {
