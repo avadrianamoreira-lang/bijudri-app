@@ -100,7 +100,7 @@ export default async function handler(req, res) {
 
     const itemsPayload = cart.map(item => ({
       order_id: order.id,
-      product_id: item.id,
+      product_id: item.id || null,
       product_name: item.name,
       quantity: Number(item.qty) || 1,
       price: Number(item.price) || 0,
