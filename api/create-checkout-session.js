@@ -18,23 +18,24 @@ function generateOrderNumber() {
 }
 
 export default async function handler(req, res) {
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try {
-    const {
-      customer,
-      cart,
-      shippingMethod,
-      shippingPrice,
-      subtotal,
-      total
-    } = req.body;
+  let body;
 
-    if (!customer || !cart || !cart.length || !shippingMethod) {
-      return res.status(400).json({ error: "Dados em falta." });
-    }
+  try {
+    body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+  } catch (e) {
+    return res.status(400).json({ error: "Invalid JSON" });
+  }
+
+  const { cart, customer, shippingPrice } = body;
+
+  if (!cart || !customer) {
+    return res.status(400).json({ error: "Missing data" });
+  }
 
     const numericSubtotal = Number(subtotal) || 0;
     const numericShipping = Number(shippingPrice) || 0;
