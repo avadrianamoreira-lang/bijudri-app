@@ -76,17 +76,23 @@ export default async function handler(req, res) {
     }
 
   // 📧 enviar email
-  await resend.emails.send({
-  from: "Bijudri <encomendas@bijudri.pt>",
-  to: session.customer_email,
-  subject: "Encomenda confirmada 💛",
-  html: `
-    <h1>Obrigado pela tua encomenda!</h1>
-    <p>Número: ${session.metadata.order_number}</p>
-  `
-});
-  }
+if (session.customer_email) {
+  try {
+    await resend.emails.send({
+      from: "Bijudri <encomendas@bijudri.pt>",
+      to: session.customer_email,
+      subject: "Encomenda confirmada 💛",
+      html: `
+        <h1>Obrigado pela tua encomenda!</h1>
+        <p>Número: ${session.metadata.order_number}</p>
+      `
+    });
 
+    console.log("Email enviado com sucesso");
+  } catch (err) {
+    console.error("Erro ao enviar email:", err);
+  }
+}
 
   res.status(200).json({ received: true });
 }
