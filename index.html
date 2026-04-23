@@ -768,7 +768,7 @@ async function startCheckout() {
   );
 
   const shipping = Number(selected.price) || 0;
-  const total = subtotal + shippingPrice;
+  const total = subtotal + shipping;
 
   try {
     const response = await fetch("/api/create-checkout-session", {
@@ -786,16 +786,16 @@ async function startCheckout() {
       })
     });
 
-    const text = await response.text();
-    let data = {};
+    const contentType = response.headers.get("content-type") || "";
+    const rawText = await response.text();
 
-    try {
-      data = JSON.parse(text);
-    } catch {
-      console.error("Resposta não-JSON da API:", text);
+    if (!contentType.includes("application/json")) {
+      console.error("Resposta da API não é JSON:", rawText);
       alert("A rota /api/create-checkout-session não foi encontrada ou devolveu HTML em vez de JSON.");
       return;
     }
+
+    const data = JSON.parse(rawText);
 
     if (!response.ok) {
       alert("Erro ao iniciar pagamento: " + (data.error || "Erro desconhecido"));
@@ -812,24 +812,6 @@ async function startCheckout() {
     console.error("Erro no startCheckout:", error);
     alert("Erro ao ligar ao checkout.");
   }
-}
-
-async function goToPayment() {
-  const response = await fetch("/api/create-checkout-session", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      cart,
-      customer,
-      shippingPrice
-    })
-  });
-
-  const data = await response.json();
-
-  window.location.href = data.url;
 }
 
 </script>
