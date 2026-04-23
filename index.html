@@ -438,21 +438,20 @@ function selectShipping(method, price) {
   selectedShipping = method;
   shippingPrice = Number(price) || 0;
 
-  render();
-}
-
   const inpostField = document.getElementById("inpost_address");
 
-  if (!inpostField) { return;
+  if (inpostField) {
+    if (method === "InPost - Locker ou Ponto Pack") {
+      inpostField.classList.remove("hidden");
+    } else {
+      inpostField.classList.add("hidden");
+      inpostField.value = "";
+    }
   }
 
-  if (method === "InPost - Locker ou Ponto Pack") {
-    inpostField.classList.remove("hidden");
-  } else {
-    inpostField.classList.add("hidden");
-    inpostField.value = "";
-  }
-
+  render();
+}
+  
 // FUNÇÕES
 function selectCategory(cat) {
   selectedCategory = cat;
