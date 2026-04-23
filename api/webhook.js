@@ -19,7 +19,17 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
+
+  // 👇 BLOQUEAR requests inválidos (browser, bots, etc)
+  if (req.method !== "POST") {
+    return res.status(405).send("Method Not Allowed");
+  }
+
   const sig = req.headers["stripe-signature"];
+
+  if (!sig) {
+    return res.status(400).send("No signature");
+  }
 
   let event;
 
