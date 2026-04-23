@@ -372,7 +372,7 @@ function renderCheckout(app) {
         <input id="country" placeholder="País" class="w-full p-2 border rounded">
       </div>
 
-      <div class="mt-6 bg-white p-4 rounded-xl shadow">
+      <div id="checkoutSummary" class="mt-6 bg-white p-4 rounded-xl shadow">
         <h3 class="font-bold mb-2">Resumo</h3>
 
         ${cart.map(item => `
