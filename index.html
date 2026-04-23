@@ -449,9 +449,9 @@ function selectShipping(method, price) {
     }
   }
 
-  render();
+  updateCheckoutSummary();
 }
-  
+
 // FUNÇÕES
 function selectCategory(cat) {
   selectedCategory = cat;
@@ -810,6 +810,25 @@ async function startCheckout() {
   } catch (error) {
     console.error("Erro no startCheckout:", error);
     alert("Erro ao ligar ao checkout.");
+  }
+}
+
+function updateCheckoutSummary() {
+  const subtotal = cart.reduce(
+    (a, i) => a + (Number(i.price) || 0) * (Number(i.qty) || 0),
+    0
+  );
+
+  const total = subtotal + shippingPrice;
+
+  const summary = document.querySelector("#checkoutSummary");
+
+  if (summary) {
+    summary.innerHTML = `
+      <div class="mt-3 font-semibold">Subtotal: ${subtotal}€</div>
+      <div class="mt-1 font-semibold">Envio: ${shippingPrice}€</div>
+      <div class="mt-2 text-lg font-bold">Total: ${total}€</div>
+    `;
   }
 }
 
