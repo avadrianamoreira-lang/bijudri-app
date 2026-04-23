@@ -1,10 +1,14 @@
 const SUPABASE_URL = "https://kzlvxawotfnxjbnhysdx.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6bHZ4YXdvdGZueGpibmh5c2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDQ4MzYsImV4cCI6MjA5MTM4MDgzNn0.Kh5ugtSRLQXLbsM2JXz6KJEv85L5H64IStftuLNfNd8";
 
-const { createClient } = supabase;
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { createClient } from '@supabase/supabase-js'
 
-const app = document.getElementById("app");
+const supabase = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+)
+
+const { data, error } = await supabase.auth.getSession()
 
 // 🔐 CHECK SESSION
 async function init() {
