@@ -61,8 +61,18 @@ export default async function handler(req, res) {
   console.log("SESSION:", session); 
 
     const orderId = session.metadata.order_id;
+  
 
     // ✅ ATUALIZAR ENCOMENDA
+
+    await supabase
+    .from("orders")
+    .update({
+      payment_status: "paid",
+      status: "confirmed"
+    })
+    .eq("id", orderId);
+    
     const { error } = await supabase
       .from("orders")
       .update({
@@ -76,23 +86,28 @@ export default async function handler(req, res) {
     }
 
   // 📧 enviar email
-if (session.customer_email) {
-  try {
-    await resend.emails.send({
-      from: "Bijudri <encomendas@bijudri.pt>",
-      to: session.customer_email,
-      subject: "Encomenda confirmada 💛",
-      html: `
-        <h1>Obrigado pela tua encomenda!</h1>
-        <p>Número: ${session.metadata.order_number}</p>
-      `
-    });
+  if (session.customer_email) {
+    try {
+      await resend.emails.send({
+        from: "Bijudri <encomendas@bijudri.pt>",
+        to: session.customer_email,
+        subject: "Encomenda confirmada 💛",
+        html: `
+          <h1>Obrigado pela tua encomenda!</h1>
+          <p>Número: ${session.metadata.order_number}</p>
+        `
+      });
 
-    console.log("Email enviado com sucesso");
-  } catch (err) {
-    console.error("Erro ao enviar email:", err);
+      // ✅ MARCAR COMO ENVIADO (É AQUI 👇)
+      await supabase
+        .from("orders")
+        .update({ email_sent: true })
+        .eq("id", orderId);
+
+    } catch (err) {
+      console.error("Erro ao enviar email:", err);
+    }
   }
 }
-
   res.status(200).json({ received: true });
 }
