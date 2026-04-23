@@ -1,5 +1,8 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import { Resend } from "resend"; // 👈 ADICIONAR
+
+const resend = new Resend(process.env.RESEND_API_KEY); // 👈 ADICIONAR
 
 // ⚠️ MUITO IMPORTANTE (fica aqui em cima, fora da função)
 export const config = {
