@@ -1,6 +1,13 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
+// ⚠️ MUITO IMPORTANTE (fica aqui em cima, fora da função)
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const supabase = createClient(
@@ -14,11 +21,21 @@ export default async function handler(req, res) {
   let event;
 
   try {
+    const buf = await new Promise((resolve, reject) => {
+      let data = "";
+      req.on("data", chunk => {
+        data += chunk;
+      });
+      req.on("end", () => resolve(data));
+      req.on("error", reject);
+    });
+
     event = stripe.webhooks.constructEvent(
-      req.body,
+      buf,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
+
   } catch (err) {
     console.error("Erro webhook:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -30,7 +47,7 @@ export default async function handler(req, res) {
 
     const orderId = session.metadata.order_id;
 
-    // atualizar encomenda
+    // ✅ ATUALIZAR ENCOMENDA
     const { error } = await supabase
       .from("orders")
       .update({
@@ -43,7 +60,7 @@ export default async function handler(req, res) {
       console.error("Erro ao atualizar encomenda:", error);
     }
 
-    // 👉 aqui depois entra email
+    // 📧 (email vem no próximo passo)
   }
 
   res.status(200).json({ received: true });
