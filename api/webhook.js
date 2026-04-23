@@ -43,7 +43,9 @@ export default async function handler(req, res) {
 
   // 🎯 PAGAMENTO CONFIRMADO
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
+  const session = event.data.object;
+
+  console.log("SESSION:", session); 
 
     const orderId = session.metadata.order_id;
 
