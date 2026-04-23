@@ -49,7 +49,9 @@ export default async function handler(req, res) {
     const host = req.headers.host;
     const protocol = host && host.includes("localhost") ? "http" : "https";
     const fallbackUrl = host ? `${protocol}://${host}` : "";
-    const appUrl = process.env.APP_URL || fallbackUrl;
+    const appUrl =
+  process.env.APP_URL ||
+  `https://${req.headers.host}`;
 
     console.log("APP_URL env:", process.env.APP_URL);
     console.log("Fallback URL:", fallbackUrl);
