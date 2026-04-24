@@ -6,7 +6,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/png" href="[res.cloudinary.com](https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png)">
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png">
   <title>Bijudri</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>  
@@ -51,6 +51,10 @@ let shippingPrice = 0;
 let productsLoaded = false;
 let productImagesByProductId = {};
 let productTouchStartX = null;
+let siteContent = {};
+let homeBanners = [];
+let activeBannerIndex = 0;
+let bannerIntervalId = null;
 
 function getProductImages(productId) {
   const images = productImagesByProductId[String(productId)] || [];
@@ -164,6 +168,52 @@ async function loadProductImages() {
   productImagesByProductId = grouped;
 }
 
+async function loadSiteContent() {
+  const { data, error } = await window.supabaseClient
+    .from("site_content")
+    .select("*")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("site_content indisponivel:", error.message);
+    siteContent = {};
+    return;
+  }
+  siteContent = data || {};
+}
+
+async function loadHomeBanners() {
+  const { data, error } = await window.supabaseClient
+    .from("homepage_banners")
+    .select("*")
+    .eq("active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.warn("homepage_banners indisponivel:", error.message);
+    homeBanners = [];
+    return;
+  }
+  homeBanners = data || [];
+}
+
+function startBannerAutoplay() {
+  if (bannerIntervalId) clearInterval(bannerIntervalId);
+  if (!homeBanners.length || view !== "home") return;
+  bannerIntervalId = window.setInterval(() => {
+    activeBannerIndex = (activeBannerIndex + 1) % homeBanners.length;
+    render();
+  }, 4500);
+}
+
+function stopBannerAutoplay() {
+  if (bannerIntervalId) {
+    clearInterval(bannerIntervalId);
+    bannerIntervalId = null;
+  }
+}
+
 const categories = ["Todas", "Destaques", "Bebé e criança", "Mulher", "Sustentáveis", "Kits"];
 
 // RENDER PRINCIPAL
@@ -184,7 +234,10 @@ function render() {
   else if (view === "product") renderProduct(app);
   else if (view === "cart") renderCart(app);
   else if (view === "checkout") renderCheckout(app);
+  else if (view === "about") renderAbout(app);
 
+  if (view === "home") startBannerAutoplay();
+  else stopBannerAutoplay();
   lucide.createIcons();
 }
 
@@ -203,7 +256,7 @@ function renderHome(app) {
     ${renderHeader()}
 
     <div class="p-4">
-      <img src="[res.cloudinary.com](https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png)" style="height:100px;" class="mb-4">
+      ${renderHomeHero()}
       <div class="flex gap-2 overflow-x-auto mb-6">
         ${categories.map(cat => `
           <button onclick="selectCategory('${cat}')"
@@ -238,6 +291,44 @@ function renderHome(app) {
   `;
 }
 
+function renderHomeHero() {
+  const hasBanners = homeBanners.length > 0;
+  const banner = hasBanners ? homeBanners[activeBannerIndex % homeBanners.length] : null;
+  const logoUrl = siteContent.logo_url || "https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png";
+  const heroTitle = siteContent.hero_title || "Artesanal, personalizado e feito por encomenda";
+  const heroSubtitle = siteContent.hero_subtitle || "Escolhe os teus tecidos e cria uma peca unica.";
+
+  return `
+    <div class="mb-6">
+      <img src="${logoUrl}" alt="Logo Bijudri" style="height:90px;" class="mb-4 object-contain">
+      ${hasBanners ? `
+        <div class="relative rounded-xl overflow-hidden shadow bg-white">
+          <img src="${banner.image_url || ""}" class="w-full h-64 md:h-80 object-cover">
+          <div class="absolute inset-0 bg-black/35 flex flex-col justify-end p-5 text-white">
+            <p class="text-xl font-semibold">${banner.title || heroTitle}</p>
+            <p class="text-sm opacity-90">${banner.subtitle || heroSubtitle}</p>
+          </div>
+          ${homeBanners.length > 1 ? `
+            <button onclick="changeBanner(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/85 rounded-full w-8 h-8">‹</button>
+            <button onclick="changeBanner(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/85 rounded-full w-8 h-8">›</button>
+          ` : ""}
+        </div>
+      ` : `
+        <div class="rounded-xl p-6 bg-white shadow">
+          <p class="text-2xl font-semibold">${heroTitle}</p>
+          <p class="mt-2 text-sm">${heroSubtitle}</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function changeBanner(delta) {
+  if (!homeBanners.length) return;
+  activeBannerIndex = (activeBannerIndex + delta + homeBanners.length) % homeBanners.length;
+  render();
+}
+
 function bindEvents() {
   document.querySelectorAll('[data-action="view-product"]').forEach(button => {
     button.addEventListener("click", () => {
@@ -257,13 +348,14 @@ function bindEvents() {
 
 function renderHeader() {
   const cartCount = cart.reduce((a, i) => a + i.qty, 0);
+  const logoUrl = siteContent.logo_url || "https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png";
 
   return `
     <header class="p-4 flex justify-between items-center bg-white shadow sticky top-0 z-50">
       <div class="flex gap-4 items-center">
-        <button onclick="view='home';render()" class="font-bold">Bijudri</button>
+        <button onclick="view='home';render()"><img src="${logoUrl}" alt="Bijudri" class="h-10 object-contain"></button>
         <button onclick="view='home';render()" class="text-sm">Home</button>
-        <button class="text-sm">Sobre mim</button>
+        <button onclick="view='about';render()" class="text-sm">Sobre mim</button>
         <button onclick="view='home';render()" class="text-sm">Produtos</button>
       </div>
 
@@ -274,6 +366,18 @@ function renderHeader() {
         </span>
       </button>
     </header>
+  `;
+}
+
+function renderAbout(app) {
+  const title = siteContent.about_title || "Sobre mim";
+  const content = siteContent.about_content || "Conteudo em breve.";
+  app.innerHTML = `
+    ${renderHeader()}
+    <div class="p-4 max-w-3xl mx-auto">
+      <h1 class="text-2xl font-bold mb-3">${title}</h1>
+      <div class="bg-white rounded-xl shadow p-5 whitespace-pre-wrap leading-7">${content}</div>
+    </div>
   `;
 }
 
@@ -729,6 +833,8 @@ function getCartDimensions() {
 document.addEventListener("DOMContentLoaded", async () => {
   await loadProducts();
   await loadProductImages();
+  await loadSiteContent();
+  await loadHomeBanners();
   await loadFabrics();
   render();
 });
