@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+
+<html lang="pt">
+
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="[res.cloudinary.com](https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png)">
+  <title>Bijudri</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>  
+<script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      background-color: #f7f3ef;
+      color: #575244;
+      font-family: montserrat, open sans;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="app"></div>
+
+
+
+<script>
+const SUPABASE_URL = "https://kzlvxawotfnxjbnhysdx.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6bHZ4YXdvdGZueGpibmh5c2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDQ4MzYsImV4cCI6MjA5MTM4MDgzNn0.Kh5ugtSRLQXLbsM2JXz6KJEv85L5H64IStftuLNfNd8";
+
+window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ESTADO/VARIÁVEL GLOBAL
+let view = "home";
+let selectedCategory = "Todas";
+let cart = [];
+let products = [];
+let selectedProduct = null;
+let activeImage = 0;
+let cartMessage = "";
+let selectedFabric = null;
+let selectedExterior = null;
+let selectedLining = null;
+let fabrics = [];
+let selectedShipping = null;
+let shippingPrice = 0;
+let productsLoaded = false;
+let productImagesByProductId = {};
+
+function getProductImages(productId) {
+  const images = productImagesByProductId[String(productId)] || [];
+  if (images.length) return images;
+
+  const fallbackProduct = products.find(p => String(p.id) === String(productId));
+  if (!fallbackProduct) return [];
+  return (fallbackProduct.image_url || "").split(",").map(x => x.trim()).filter(Boolean);
+}
+
+function getPrimaryProductImage(product) {
+  const images = getProductImages(product.id);
+  return images[0] || "";
+}
+
+// PRODUTOS EXEMPLO (substituímos depois pelos teus reais)
+async function loadProducts() {
+  const { data, error } = await window.supabaseClient
+    .from("products")
+    .select("*");
+
+  productsLoaded = true;
+
+  if (error) {
+    console.error("Erro ao carregar produtos:", error);
+    alert("Erro ao carregar produtos");
+    products = [];
+    return;
+  }
+
+  products = data || [];
+}
+
+async function loadProductImages() {
+  const { data, error } = await window.supabaseClient
+    .from("product_images")
+    .select("product_id,url,sort_order,is_primary")
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("Erro ao carregar imagens dos produtos:", error);
+    productImagesByProductId = {};
+    return;
+  }
+
+  const grouped = {};
+  (data || []).forEach(item => {
+    const key = String(item.product_id);
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(item);
+  });
+
+  Object.keys(grouped).forEach(key => {
+    const ordered = grouped[key]
+      .sort((a, b) => {
+        if (a.is_primary === b.is_primary) {
+          return Number(a.sort_order || 0) - Number(b.sort_order || 0);
+        }
+        return a.is_primary ? -1 : 1;
+      })
+      .map(item => item.url)
+      .filter(Boolean);
+    grouped[key] = ordered;
+  });
+
+  productImagesByProductId = grouped;
+}
+
+const categories = ["Todas", "Destaques", "Bebé e criança", "Mulher", "Sustentáveis", "Kits"];
+
+// RENDER PRINCIPAL
+function render() {
+  const app = document.getElementById("app");
+
+  if (!productsLoaded) {
+    app.innerHTML = "<p class='p-4'>A carregar produtos...</p>";
+    return;
+  }
+
+  if (products.length === 0) {
+    app.innerHTML = "<p class='p-4'>Sem produtos disponíveis.</p>";
+    return;
+  }
+
+  if (view === "home") renderHome(app);
+  else if (view === "product") renderProduct(app);
+  else if (view === "cart") renderCart(app);
+  else if (view === "checkout") renderCheckout(app);
+
+  lucide.createIcons();
+}
+
+function renderHome(app) {
+  let filtered;
+
+  if (selectedCategory === "Todas") {
+    filtered = products;
+  } else if (selectedCategory === "Destaques") {
+    filtered = products.filter(p => p.featured === true);
+  } else {
+    filtered = products.filter(p => p.category === selectedCategory);
+  }
+
+  app.innerHTML = `
+    ${renderHeader()}
+
+    <div class="p-4">
+      <img src="[res.cloudinary.com](https://res.cloudinary.com/dohslobkh/image/upload/v1775900519/Novo_logo_Bijudri_2026_ex16c9.png)" style="height:100px;" class="mb-4">
+      <div class="flex gap-2 overflow-x-auto mb-6">
+        ${categories.map(cat => `
+          <button onclick="selectCategory('${cat}')"
+            class="px-3 py-2 rounded-full border ${selectedCategory === cat ? 'bg-[#cfa05d] text-white' : ''}">
+            ${cat}
+          </button>
+        `).join("")}
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        ${filtered.map(p => `
+          <div class="bg-white p-2 rounded-xl shadow-sm">
+            <img src="${getPrimaryProductImage(p)}" 
+              class="w-full h-60 object-cover rounded">
+
+            <h3 class="text-xs mt-2">${p.name}</h3>
+            <p>${Number(p.price) || 0}€</p>
+
+            <button onclick="viewProduct('${p.id}')"
+              class="mt-2 w-full border border-[#575244] text-[#575244] py-2 text-xs rounded hover:bg-[#575244] hover:text-white transition">
+              Ver produto
+            </button>
+
+            <button onclick="viewProduct('${p.id}')"
+              class="mt-2 w-full bg-[#575244] text-white py-2 text-xs rounded hover:opacity-90 transition">
+              Escolher opções
+            </button>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function bindEvents() {
+  document.querySelectorAll('[data-action="view-product"]').forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.id;
+      viewProduct(id);
+    });
+  });
+
+  document.querySelectorAll('[data-action="add-to-cart"]').forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.id;
+      addToCart(id);
+    });
+  });
+}
+
+
+function renderHeader() {
+  const cartCount = cart.reduce((a, i) => a + i.qty, 0);
+
+  return `
+    <header class="p-4 flex justify-between items-center bg-white shadow sticky top-0 z-50">
+      <div class="flex gap-4 items-center">
+        <button onclick="view='home';render()" class="font-bold">Bijudri</button>
+        <button onclick="view='home';render()" class="text-sm">Home</button>
+        <button class="text-sm">Sobre mim</button>
+        <button onclick="view='home';render()" class="text-sm">Produtos</button>
+      </div>
+
+      <button onclick="goToCart()" class="relative">
+        <i data-lucide="shopping-cart"></i>
+        <span class="absolute -top-2 -right-2 bg-[#cfa05d] text-white text-xs px-2 rounded-full">
+          ${cartCount}
+        </span>
+      </button>
+    </header>
+  `;
+}
+
+function renderProduct(app) {
+  if (!selectedProduct) {
+    view = "home";
+    render();
+    return;
+  }
+
+  const p = selectedProduct;
+  const images = getProductImages(p.id);
+
+  const outerFabrics = fabrics.filter(f => f.type === "outer");
+  const liningFabrics = fabrics.filter(f => f.type === "lining");
+
+  const thumbnailsHTML = images.map((img, i) => `
+    <img src="${img}"
+      onclick="changeImage(${i})"
+      class="h-20 w-full object-cover rounded cursor-pointer border ${activeImage === i ? 'border-[#cfa05d]' : 'border-transparent'}">
+  `).join("");
+
+  const exteriorHTML = outerFabrics.length
+    ? outerFabrics.map(f => `
+      <div onclick="selectExterior('${f.code}')"
+        class="cursor-pointer border-2 rounded-lg overflow-hidden ${selectedExterior === f.code ? 'border-[#cfa05d]' : 'border-transparent'}">
+        <img src="${f.image_url}" class="w-full h-20 object-cover">
+      </div>
+    `).join("")
+    : `<p class="text-xs text-gray-500">Sem tecidos disponíveis</p>`;
+
+  const liningHTML = p.has_lining
+    ? `
+      <h3 class="mt-4 font-semibold">Forro</h3>
+      <div class="grid grid-cols-4 gap-2 mt-2">
+        ${liningFabrics.length
+          ? liningFabrics.map(f => `
+            <div onclick="selectLining('${f.code}')"
+              class="cursor-pointer border-2 rounded-lg overflow-hidden ${selectedLining === f.code ? 'border-[#cfa05d]' : 'border-transparent'}">
+              <img src="${f.image_url}" class="w-full h-20 object-cover">
+            </div>
+          `).join("")
+          : `<p class="text-xs text-gray-500">Sem forros disponíveis</p>`
+        }
+      </div>
+    `
+    : "";
+
+  app.innerHTML = `
+    ${renderHeader()}
+    <div class="p-4">
+      <button onclick="view='home';render()" class="text-sm mb-4">← Voltar</button>
+
+      <h1 class="text-xl font-bold mb-2">${p.name}</h1>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <img src="${images[activeImage] || ''}" class="w-full h-[450px] object-cover rounded-xl">
+        </div>
+
+        <div>
+          <div class="grid grid-cols-4 gap-2 mb-4">
+            ${thumbnailsHTML}
+          </div>
+
+          <p class="text-lg font-bold text-[#cfa05d]">${Number(p.price) || 0}€</p>
+          <p class="text-sm mt-2">${p.description || ""}</p>
+
+          <h3 class="mt-4 font-semibold text-[#575244]">Escolhe as tuas personalizações</h3>
+
+          <h3 class="mt-4 font-semibold">Exterior</h3>
+          <div class="grid grid-cols-4 gap-2 mt-2">
+            ${exteriorHTML}
+          </div>
+
+          ${liningHTML}
+
+          <button onclick="addToCart('${p.id}')"
+            class="mt-4 w-full bg-[#575244] text-white py-3 rounded">
+            Adicionar ao carrinho
+          </button>
+
+          ${cartMessage ? `<p class="mt-2 text-green-600 text-sm">${cartMessage}</p>` : ""}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCart(app) {
+  app.innerHTML = `
+  ${renderHeader()}
+
+  <div class="p-4 max-w-3xl mx-auto">
+
+    <button onclick="view='home';render()" class="text-sm mb-4">← Continuar a comprar</button>
+
+    <h2 class="text-xl font-bold mb-4">Carrinho</h2>
+
+    ${
+      cart.length === 0
+        ? `<p class="text-gray-500">O carrinho está vazio</p>`
+        : cart.map(item => `
+          <div class="bg-white p-4 rounded-xl shadow mb-3 flex gap-4">
+
+            <!-- IMAGEM PRODUTO -->
+            <img src="${item.image_url || ''}" 
+              class="w-20 h-20 object-cover rounded">
+
+            <div class="flex-1">
+
+              <p class="font-semibold">${item.name}</p>
+
+              <!-- TECIDOS -->
+              <div class="mt-2">
+
+                <p class="text-xs text-gray-500">Exterior:</p>
+                ${item.exterior ? `
+                  <img src="${getFabricByCode(item.exterior)?.image_url || ''}"
+                    class="w-10 h-10 object-cover rounded border">
+                ` : ""}
+
+                ${item.lining ? `
+                  <p class="text-xs text-gray-500 mt-2">Forro:</p>
+                  <img src="${getFabricByCode(item.lining)?.image_url || ''}"
+                    class="w-10 h-10 object-cover rounded border">
+                ` : ""}
+              </div>
+
+              <!-- QUANTIDADE -->
+              <div class="flex items-center gap-2 mt-2">
+                <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',-1)"
+                  class="px-2 border rounded">-</button>
+
+                <span>${item.qty}</span>
+
+                <button onclick="changeQty('${item.id}','${item.exterior}','${item.lining}',1)"
+                  class="px-2 border rounded">+</button>
+              </div>
+
+            </div>
+
+            <!-- PREÇO -->
+            <div class="font-bold text-[#cfa05d]">
+              ${item.price * item.qty}€
+            </div>
+
+          </div>
+        `).join("")
+    }
+
+    <!-- TOTAL -->
+    <div class="mt-6 text-right">
+      <p class="text-lg font-bold">
+        Total: ${cart.reduce((a,i)=>a+i.price*i.qty,0)}€
+      </p>
+    </div>
+
+    <!-- CTA -->
+    ${
+      cart.length > 0
+        ? `<button onclick="goToCheckout()" 
+  class="mt-6 w-full bg-[#575244] text-white py-3 rounded-xl">
+  Finalizar Encomenda
+</button>`
+        : ""
+    }
+
+  </div>
+  `;
+}
+  
+function renderCheckout(app) {
+  const subtotal = cart.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.qty) || 0), 0);
+
+  app.innerHTML = `
+    ${renderHeader()}
+
+    <div class="p-4 max-w-3xl mx-auto">
+
+      <button onclick="view='cart';render()" class="text-sm mb-4">← Voltar ao carrinho</button>
+
+      <h2 class="text-xl font-bold mb-4">Checkout</h2>
+
+      <div class="space-y-3">
+        <input id="name" placeholder="Nome" class="w-full p-2 border rounded">
+        <input id="email" placeholder="Email" class="w-full p-2 border rounded">
+        <input id="phone" placeholder="Telemóvel" class="w-full p-2 border rounded">
+        <input id="address" placeholder="Morada" class="w-full p-2 border rounded">
+        <input id="city" placeholder="Localidade" class="w-full p-2 border rounded">
+        <input id="postal" placeholder="Código Postal" class="w-full p-2 border rounded">
+        <input id="country" placeholder="País" class="w-full p-2 border rounded">
+      </div>
+
+      <div class="mt-6 bg-white p-4 rounded-xl shadow">
+        <h3 class="font-bold mb-2">Resumo</h3>
+
+        ${cart.map(item => `
+          <div class="flex justify-between text-sm mb-1">
+            <span>${item.name} x ${item.qty}</span>
+            <span>${(Number(item.price) || 0) * (Number(item.qty) || 0)}€</span>
+          </div>
+        `).join("")}
+
+        <div class="mt-3 font-semibold">
+          Subtotal: ${subtotal}€
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <h3 class="font-bold mb-2">Método de envio</h3>
+        <div id="shippingOptions"></div>
+
+        <input
+          id="inpost_address"
+          placeholder="Morada do ponto InPost"
+          class="w-full p-2 border rounded mt-2 hidden"
+        >
+      </div>
+
+      <button onclick="startCheckout()"
+        class="mt-6 w-full bg-[#575244] text-white py-3 rounded-xl">
+        Confirmar e pagar
+      </button>
+
+    </div>
+  `;
+
+  setTimeout(() => {
+    renderShippingOptions();
+  }, 100);
+}
+
+async function renderShippingOptions() {
+  const container = document.getElementById("shippingOptions");
+  const options = await calculateShippingOptions();
+
+  container.innerHTML = options.map(opt => `
+    <label class="flex justify-between items-center border p-2 rounded cursor-pointer ${opt.price === null ? 'opacity-50' : ''}">
+      <div>
+        <input 
+          type="radio" 
+          name="shipping" 
+          value="${opt.method}" 
+          ${opt.price === null ? 'disabled' : ''}
+          onchange="selectShipping('${opt.method}')">
+        <span class="ml-2 font-semibold">${opt.method}</span>
+        <p class="text-xs text-gray-500">${opt.delivery_time}</p>
+      </div>
+      <span class="font-bold">
+        ${opt.price !== null ? opt.price + "€" : "Indisponível"}
+      </span>
+    </label>
+  `).join("");
+}
+
+function selectShipping(method) {
+  selectedShipping = method;
+
+  const inpostField = document.getElementById("inpost_address");
+
+  if (!inpostField) return;
+
+  if (method === "InPost - Locker ou Ponto Pack") {
+    inpostField.classList.remove("hidden");
+  } else {
+    inpostField.classList.add("hidden");
+    inpostField.value = "";
+  }
+}
+
+// FUNÇÕES
+function selectCategory(cat) {
+  selectedCategory = cat;
+  render();
+}
+
+function addToCart(id) {
+  const product = products.find(p => String(p.id) === String(id));
+
+  if (!product) {
+    alert("Produto não encontrado");
+    return;
+  }
+
+  const outerFabrics = fabrics.filter(f => f.type === "outer");
+  const requiresExterior = outerFabrics.length > 0;
+  const requiresLining = product.has_lining === true;
+
+  if (view === "product") {
+    if (requiresExterior && !selectedExterior) {
+      alert("Seleciona tecido exterior");
+      return;
+    }
+
+    if (requiresLining && !selectedLining) {
+      alert("Seleciona tecido de forro");
+      return;
+    }
+  } else {
+    viewProduct(id);
+    return;
+  }
+
+  const existing = cart.find(i =>
+    String(i.id) === String(id) &&
+    i.exterior === selectedExterior &&
+    i.lining === selectedLining
+  );
+
+  if (existing) {
+    existing.qty++;
+  } else {
+    cart.push({
+      id: product.id,
+      name: product.name,
+      price: Number(product.price) || 0,
+      image_url: getPrimaryProductImage(product),
+      qty: 1,
+      exterior: selectedExterior || null,
+      lining: selectedLining || null
+    });
+  }
+
+  cartMessage = "Adicionado ao carrinho ✅";
+
+  setTimeout(() => {
+    cartMessage = "";
+    render();
+  }, 1500);
+
+  render();
+}
+
+function goToCart() {
+  view = "cart";
+  render();
+}
+ function viewProduct(id) {
+  selectedProduct = products.find(p => String(p.id) === String(id));
+  activeImage = 0;
+  selectedExterior = null;
+  selectedLining = null;
+  cartMessage = "";
+  view = "product";
+  render();
+}
+
+async function loadFabrics() {
+  const { data, error } = await window.supabaseClient
+    .from("fabrics")
+    .select("*");
+
+  if (error) {
+    console.error("Erro tecidos", error);
+    return;
+  }
+console.log("FABRICS:", data);
+  fabrics = data || [];
+}
+  
+function selectExterior(code) {
+  selectedExterior = code;
+  render();
+}
+
+function selectLining(code) {
+  selectedLining = code;
+  render();
+}
+
+function goToCheckout() {
+  view = "checkout";
+  render();
+}
+
+function changeQty(id, exterior, lining, delta) {
+  const item = cart.find(i => 
+    i.id === id &&
+    i.exterior === exterior &&
+    i.lining === lining
+  );
+
+  if (!item) return;
+
+  item.qty += delta;
+
+  if (item.qty <= 0) {
+    cart = cart.filter(i =>
+      !(i.id === id && i.exterior === exterior && i.lining === lining)
+    );
+  }
+
+  render();
+}
+
+function selectFabric(code) {
+  selectedFabric = code;
+  render();
+}
+
+function getCartWeight() {
+  return cart.reduce((total, item) => {
+    const product = products.find(p => p.id === item.id);
+    return total + ((product?.weight || 0) * item.qty);
+  }, 0);
+}
+
+function getCartVolume() {
+  return cart.reduce((total, item) => {
+    const p = products.find(x => x.id === item.id);
+    if (!p) return total;
+
+    const volume = (p.length || 0) * (p.width || 0) * (p.height || 0);
+    return total + volume * item.qty;
+  }, 0);
+}
+
+function getFabricByCode(code) {
+  return fabrics.find(f => f.code === code);
+}
+
+function getCartDimensions() {
+  let maxLength = 0;
+  let maxHeight = 0;
+  let maxWidth = 0;
+
+  cart.forEach(item => {
+    const p = products.find(prod => prod.id === item.id);
+    if (!p) return;
+
+    maxLength = Math.max(maxLength, p.length || 0);
+    maxHeight = Math.max(maxHeight, p.height || 0);
+    maxWidth = Math.max(maxWidth, p.width || 0);
+  });
+
+  return { length: maxLength, height: maxHeight, width: maxWidth };
+}
+  
+// INIT
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadProducts();
+  await loadProductImages();
+  await loadFabrics();
+  render();
+});
+  
+async function createOrder(customer, cart, total, subtotal, shippingPriceValue) {
+  const orderPayload = {
+    customer_name: customer.name,
+    customer_email: customer.email,
+    customer_phone: customer.phone || null,
+    address: customer.address || null,
+    city: customer.city || null,
+    postal_code: customer.postal || null,
+    country: customer.country || null,
+    inpost_address: customer.inpost || null,
+    subtotal: Number(subtotal) || 0,
+    shipping_price: Number(shippingPriceValue) || 0,
+    total: Number(total) || 0,
+    status: "pendente",
+    shipping_method: selectedShipping
+  };
+
+  const { data, error } = await window.supabaseClient
+    .from("orders")
+    .insert(orderPayload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Erro ao criar encomenda:", error);
+    alert("Erro ao criar encomenda: " + error.message);
+    return;
+  }
+
+  const items = cart.map(item => ({
+    order_id: data.id,
+    product_id: item.id,
+    product_name: item.name,
+    quantity: Number(item.qty) || 1,
+    price: Number(item.price) || 0,
+    exterior: item.exterior || null,
+    lining: item.lining || null
+  }));
+
+  const { error: itemsError } = await window.supabaseClient
+    .from("order_items")
+    .insert(items);
+
+  if (itemsError) {
+    console.error("Erro ao guardar artigos:", itemsError);
+    alert("Encomenda criada, mas houve erro ao guardar os artigos: " + itemsError.message);
+    return;
+  }
+
+  alert("Encomenda criada com sucesso!");
+}
+
+async function calculateShippingOptions() {
+  const weight = Number(getCartWeight()) || 0;
+  const dimensions = getCartDimensions();
+
+  const length = Number(dimensions.length) || 0;
+  const height = Number(dimensions.height) || 0;
+  const width = Number(dimensions.width) || 0;
+
+  const { data, error } = await window.supabaseClient
+    .from("shipping_rules")
+    .select("*");
+
+  if (error) {
+    console.error("Erro ao carregar envios:", error);
+    return [];
+  }
+
+  console.log("PESO:", weight);
+  console.log("DIMENSÕES:", { length, height, width });
+  console.log("REGRAS ENVIO:", data);
+
+  const methods = [
+    "CTT Correio Verde",
+    "CTT Correio Registado",
+    "InPost - Locker ou Ponto Pack"
+  ];
+
+  return methods.map(method => {
+    const validRules = data.filter(r =>
+      r.method === method &&
+      weight >= Number(r.min_weight || 0) &&
+      weight <= Number(r.max_weight || 999999) &&
+      height >= Number(r.min_height || 0) &&
+      height <= Number(r.max_height || 999999) &&
+      length >= Number(r.min_length || 0) &&
+      length <= Number(r.max_length || 999999) &&
+      width >= Number(r.min_width || 0) &&
+      width <= Number(r.max_width || 999999)
+    );
+
+    console.log("Método:", method, "Regras válidas:", validRules);
+
+    const rule = validRules[0];
+
+    return {
+      method,
+      price: rule ? Number(rule.price) : null,
+      delivery_time: rule ? rule.delivery_time : "-"
+    };
+  });
+}
+
+async function startCheckout() {
+  const customer = {
+    name: document.getElementById("name")?.value.trim() || "",
+    email: document.getElementById("email")?.value.trim() || "",
+    phone: document.getElementById("phone")?.value.trim() || "",
+    address: document.getElementById("address")?.value.trim() || "",
+    city: document.getElementById("city")?.value.trim() || "",
+    postal: document.getElementById("postal")?.value.trim() || "",
+    country: document.getElementById("country")?.value.trim() || "",
+    inpost: document.getElementById("inpost_address")?.value.trim() || ""
+  };
+
+  if (!customer.name || !customer.email || !selectedShipping) {
+    alert("Preenche os campos obrigatórios.");
+    return;
+  }
+
+  if (selectedShipping === "InPost - Locker ou Ponto Pack" && !customer.inpost) {
+    alert("Indica a morada do ponto InPost.");
+    return;
+  }
+
+  const options = await calculateShippingOptions();
+  const selected = options.find(o => o.method === selectedShipping);
+
+  if (!selected || selected.price === null) {
+    alert("O método de envio selecionado não está disponível.");
+    return;
+  }
+
+  const subtotal = cart.reduce(
+    (a, i) => a + (Number(i.price) || 0) * (Number(i.qty) || 0),
+    0
+  );
+
+  const shipping = Number(selected.price) || 0;
+  const total = subtotal + shipping;
+
+  try {
+    const response = await fetch("/api/create-checkout-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        customer,
+        cart,
+        shippingMethod: selectedShipping,
+        shippingPrice: shipping,
+        subtotal,
+        total
+      })
+    });
+
+    const text = await response.text();
+    let data = {};
+
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.error("Resposta não-JSON da API:", text);
+      alert("A rota /api/create-checkout-session não foi encontrada ou devolveu HTML em vez de JSON.");
+      return;
+    }
+
+    if (!response.ok) {
+      alert("Erro ao iniciar pagamento: " + (data.error || "Erro desconhecido"));
+      return;
+    }
+
+    if (!data.url) {
+      alert("A API respondeu sem URL de checkout.");
+      return;
+    }
+
+    window.location.href = data.url;
+  } catch (error) {
+    console.error("Erro no startCheckout:", error);
+    alert("Erro ao ligar ao checkout.");
+  }
+}
+
+</script>
+
+</body>
+</html>
