@@ -78,9 +78,19 @@ async function callAdminApi(url, body, method = "POST") {
     body: JSON.stringify(body)
   });
 
-  const payload = await response.json().catch(() => ({}));
+  const rawText = await response.text();
+  let payload = {};
+  try {
+    payload = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    payload = {};
+  }
+
   if (!response.ok) {
-    throw new Error(payload?.error || "Erro na operacao.");
+    throw new Error(
+      payload?.error ||
+        (rawText ? `Erro ${response.status}: ${rawText.slice(0, 180)}` : `Erro ${response.status} na operacao.`)
+    );
   }
 
   return payload;
@@ -914,4 +924,3 @@ async function deleteProduct(id) {
 }
 
 init();
-
