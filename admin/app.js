@@ -7,6 +7,8 @@ const app = document.getElementById("app");
 const state = {
   products: [],
   orders: [],
+  siteContent: null,
+  banners: [],
   productFilters: {
     search: "",
     category: "all",
@@ -262,6 +264,7 @@ function renderApp() {
           <button class="text-left hover:bg-[#6a6354] rounded p-2" onclick="loadDashboard()">Dashboard</button>
           <button class="text-left hover:bg-[#6a6354] rounded p-2" onclick="loadOrders()">Encomendas</button>
           <button class="text-left hover:bg-[#6a6354] rounded p-2" onclick="loadProducts()">Produtos</button>
+          <button class="text-left hover:bg-[#6a6354] rounded p-2" onclick="loadContentManager()">Conteudo Loja</button>
           <button class="text-left hover:bg-[#6a6354] rounded p-2 mt-8" onclick="logout()">Logout</button>
         </nav>
       </aside>
@@ -921,6 +924,150 @@ async function deleteProduct(id) {
   state.products = state.products.filter((item) => item.id !== id);
   renderProductsView();
   setMessage("Produto apagado com sucesso.");
+}
+
+async function loadContentManager() {
+  const [contentResult, bannersResult] = await Promise.allSettled([
+    callAdminApiGet("/api/admin/site-content"),
+    callAdminApiGet("/api/admin/banners")
+  ]);
+
+  state.siteContent =
+    contentResult.status === "fulfilled" ? contentResult.value.item || {} : {};
+  state.banners =
+    bannersResult.status === "fulfilled" ? bannersResult.value.items || [] : [];
+
+  renderContentManager();
+
+  if (contentResult.status === "rejected") {
+    setMessage(
+      `Nao foi possivel carregar site content: ${contentResult.reason?.message || "erro desconhecido"}`,
+      true
+    );
+  }
+
+  if (bannersResult.status === "rejected") {
+    setMessage(
+      `Nao foi possivel carregar banners: ${bannersResult.reason?.message || "erro desconhecido"}`,
+      true
+    );
+  }
+}
+
+function renderContentManager() {
+  const content = state.siteContent || {};
+  const banners = state.banners || [];
+  document.getElementById("content").innerHTML = `
+    <h2 class="text-2xl font-bold mb-4">Conteudo da Loja</h2>
+    <div class="bg-white rounded-xl shadow p-4 mb-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+      <h3 class="text-lg font-semibold md:col-span-2">Branding + Sobre Mim</h3>
+      <input id="site_logo_url" class="border p-2 rounded md:col-span-2" placeholder="Logo URL" value="${escapeHtml(content.logo_url || "")}">
+      <input id="about_title" class="border p-2 rounded md:col-span-2" placeholder="Titulo Sobre mim" value="${escapeHtml(content.about_title || "Sobre mim")}">
+      <textarea id="about_content" class="border p-2 rounded md:col-span-2" rows="5" placeholder="Conteudo Sobre mim">${escapeHtml(content.about_content || "")}</textarea>
+      <input id="hero_title" class="border p-2 rounded md:col-span-2" placeholder="Titulo principal home" value="${escapeHtml(content.hero_title || "")}">
+      <input id="hero_subtitle" class="border p-2 rounded md:col-span-2" placeholder="Subtitulo principal home" value="${escapeHtml(content.hero_subtitle || "")}">
+      <button onclick="saveSiteContent()" class="bg-[#575244] text-white py-2 px-4 rounded md:col-span-2">Guardar conteudo</button>
+    </div>
+
+    <div class="bg-white rounded-xl shadow p-4 mb-4">
+      <h3 class="text-lg font-semibold mb-3">Banners Home (slider)</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input id="banner_image_url" class="border p-2 rounded md:col-span-2" placeholder="Banner image URL">
+        <input id="banner_title" class="border p-2 rounded" placeholder="Titulo do banner">
+        <input id="banner_subtitle" class="border p-2 rounded" placeholder="Subtitulo do banner">
+        <input id="banner_link_url" class="border p-2 rounded md:col-span-2" placeholder="Link opcional (ex: /?promo=mae)">
+        <input id="banner_sort_order" type="number" class="border p-2 rounded" placeholder="Ordem" value="0">
+        <label class="flex items-center gap-2"><input id="banner_active" type="checkbox" checked> Banner ativo</label>
+      </div>
+      <button onclick="createBanner()" class="mt-3 border px-3 py-2 rounded">Adicionar banner</button>
+    </div>
+
+    <div class="space-y-3">
+      ${banners.length ? banners.map((banner) => `
+        <div class="bg-white rounded-xl shadow p-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <input id="banner_img_${banner.id}" class="border p-2 rounded md:col-span-2" value="${escapeHtml(banner.image_url || "")}">
+            <input id="banner_title_${banner.id}" class="border p-2 rounded" value="${escapeHtml(banner.title || "")}">
+            <input id="banner_sub_${banner.id}" class="border p-2 rounded" value="${escapeHtml(banner.subtitle || "")}">
+            <input id="banner_link_${banner.id}" class="border p-2 rounded md:col-span-2" value="${escapeHtml(banner.link_url || "")}">
+            <input id="banner_sort_${banner.id}" type="number" class="border p-2 rounded" value="${Number(banner.sort_order || 0)}">
+            <label class="flex items-center gap-2"><input id="banner_active_${banner.id}" type="checkbox" ${banner.active ? "checked" : ""}> Ativo</label>
+          </div>
+          <div class="flex gap-2 mt-3">
+            <button onclick="updateBanner('${banner.id}')" class="bg-[#575244] text-white px-3 py-2 rounded text-sm">Guardar banner</button>
+            <button onclick="deleteBanner('${banner.id}')" class="border border-red-300 text-red-700 px-3 py-2 rounded text-sm">Apagar banner</button>
+          </div>
+        </div>
+      `).join("") : `<div class="bg-white rounded-xl shadow p-4">Ainda sem banners.</div>`}
+    </div>
+  `;
+}
+
+async function saveSiteContent() {
+  const payload = {
+    logo_url: document.getElementById("site_logo_url")?.value.trim() || "",
+    about_title: document.getElementById("about_title")?.value.trim() || "Sobre mim",
+    about_content: document.getElementById("about_content")?.value.trim() || "",
+    hero_title: document.getElementById("hero_title")?.value.trim() || "",
+    hero_subtitle: document.getElementById("hero_subtitle")?.value.trim() || ""
+  };
+  try {
+    await callAdminApi("/api/admin/site-content", { payload });
+    setMessage("Conteudo da loja atualizado.");
+  } catch (error) {
+    setMessage(error.message || "Erro ao guardar conteudo.", true);
+  }
+}
+
+async function createBanner() {
+  const payload = {
+    image_url: document.getElementById("banner_image_url")?.value.trim() || "",
+    title: document.getElementById("banner_title")?.value.trim() || "",
+    subtitle: document.getElementById("banner_subtitle")?.value.trim() || "",
+    link_url: document.getElementById("banner_link_url")?.value.trim() || "",
+    sort_order: Number(document.getElementById("banner_sort_order")?.value || 0),
+    active: document.getElementById("banner_active")?.checked || false
+  };
+  if (!payload.image_url) {
+    setMessage("URL da imagem do banner e obrigatoria.", true);
+    return;
+  }
+  try {
+    await callAdminApi("/api/admin/banners", { action: "create", payload });
+    setMessage("Banner criado.");
+    loadContentManager();
+  } catch (error) {
+    setMessage(error.message || "Erro ao criar banner.", true);
+  }
+}
+
+async function updateBanner(id) {
+  const payload = {
+    image_url: document.getElementById(`banner_img_${id}`)?.value.trim() || "",
+    title: document.getElementById(`banner_title_${id}`)?.value.trim() || "",
+    subtitle: document.getElementById(`banner_sub_${id}`)?.value.trim() || "",
+    link_url: document.getElementById(`banner_link_${id}`)?.value.trim() || "",
+    sort_order: Number(document.getElementById(`banner_sort_${id}`)?.value || 0),
+    active: document.getElementById(`banner_active_${id}`)?.checked || false
+  };
+  try {
+    await callAdminApi("/api/admin/banners", { action: "update", id, payload });
+    setMessage("Banner atualizado.");
+    loadContentManager();
+  } catch (error) {
+    setMessage(error.message || "Erro ao atualizar banner.", true);
+  }
+}
+
+async function deleteBanner(id) {
+  if (!window.confirm("Apagar este banner?")) return;
+  try {
+    await callAdminApi("/api/admin/banners", { action: "delete", id });
+    setMessage("Banner apagado.");
+    loadContentManager();
+  } catch (error) {
+    setMessage(error.message || "Erro ao apagar banner.", true);
+  }
 }
 
 init();
