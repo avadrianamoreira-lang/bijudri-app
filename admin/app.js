@@ -86,6 +86,99 @@ async function callAdminApi(url, body, method = "POST") {
   return payload;
 }
 
+async function callAdminApiGet(url) {
+  const token = await getAccessToken();
+  if (!token) {
+    throw new Error("Sessao expirada. Faz login novamente.");
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error || "Erro na operacao.");
+  }
+
+  return payload;
+}
+
+function parseGalleryUrls(input) {
+  return String(input || "")
+    .split(/\r?\n|,/)
+    .map((url) => url.trim())
+    .filter(Boolean);
+}
+
+function collectImageInput() {
+  const primaryImageUrl = document.getElementById("primary_image_url")?.value.trim() || "";
+  const galleryRaw = document.getElementById("gallery_urls")?.value || "";
+  const galleryUrls = parseGalleryUrls(galleryRaw);
+  return { primaryImageUrl, galleryUrls };
+}
+
+function getPreviewUrls() {
+  const { primaryImageUrl, galleryUrls } = collectImageInput();
+  const urls = [];
+  const seen = new Set();
+
+  if (primaryImageUrl && !seen.has(primaryImageUrl)) {
+    urls.push(primaryImageUrl);
+    seen.add(primaryImageUrl);
+  }
+
+  for (const url of galleryUrls) {
+    if (!seen.has(url)) {
+      urls.push(url);
+      seen.add(url);
+    }
+  }
+
+  return urls;
+}
+
+function renderImagePreview() {
+  const container = document.getElementById("image-preview");
+  if (!container) return;
+  const urls = getPreviewUrls();
+
+  if (!urls.length) {
+    container.innerHTML = `<p class="text-sm opacity-70">Sem imagens para preview.</p>`;
+    return;
+  }
+
+  const activeIndex = Number(container.dataset.index || 0);
+  const safeIndex = Math.max(0, Math.min(activeIndex, urls.length - 1));
+  const current = urls[safeIndex];
+
+  container.dataset.index = String(safeIndex);
+  container.innerHTML = `
+    <div class="border rounded p-3 bg-zinc-50">
+      <img src="${escapeHtml(current)}" alt="Preview produto" class="w-full h-64 object-contain bg-white rounded border">
+      <div class="flex items-center justify-between mt-3 text-sm">
+        <button type="button" onclick="stepImagePreview(-1)" class="border rounded px-3 py-1">Anterior</button>
+        <span>${safeIndex + 1} / ${urls.length}</span>
+        <button type="button" onclick="stepImagePreview(1)" class="border rounded px-3 py-1">Seguinte</button>
+      </div>
+    </div>
+  `;
+}
+
+function stepImagePreview(delta) {
+  const container = document.getElementById("image-preview");
+  if (!container) return;
+  const urls = getPreviewUrls();
+  if (!urls.length) return;
+
+  const current = Number(container.dataset.index || 0);
+  const next = (current + delta + urls.length) % urls.length;
+  container.dataset.index = String(next);
+  renderImagePreview();
+}
+
 async function init() {
   const {
     data: { session },
@@ -576,7 +669,7 @@ function applyProductFilters() {
   renderProductsView();
 }
 
-function showProductForm(productId = "") {
+async function showProductForm(productId = "") {
   const editing = Boolean(productId);
   const product = state.products.find((item) => item.id === productId) || {
     name: "",
@@ -594,6 +687,20 @@ function showProductForm(productId = "") {
     width: "",
     height: ""
   };
+  let galleryUrls = [];
+
+  if (editing) {
+    try {
+      const response = await callAdminApiGet(`/api/admin/product-images?id=${encodeURIComponent(productId)}`);
+      galleryUrls = (response.items || []).map((item) => item.url).filter(Boolean);
+    } catch (error) {
+      console.error("Erro ao carregar galeria:", error);
+      setMessage("Nao foi possivel carregar as imagens extra do produto.", true);
+    }
+  }
+
+  const primaryImageUrl = product.image_url || galleryUrls[0] || "";
+  const extraGalleryUrls = galleryUrls.filter((url) => url !== primaryImageUrl);
 
   document.getElementById("content").innerHTML = `
     <div class="max-w-3xl">
@@ -616,9 +723,14 @@ function showProductForm(productId = "") {
         <input id="category" class="border p-2 rounded" placeholder="Categoria*" value="${escapeHtml(
           product.category || ""
         )}">
-        <input id="image_url" class="border p-2 rounded" placeholder="Image URL (Cloudinary)" value="${escapeHtml(
-          product.image_url || ""
+        <input id="primary_image_url" class="border p-2 rounded md:col-span-2" placeholder="Imagem principal URL (Cloudinary)" value="${escapeHtml(
+          primaryImageUrl
         )}">
+        <textarea id="gallery_urls" class="border p-2 rounded md:col-span-2" rows="4" placeholder="Imagens extra (1 URL por linha)">${escapeHtml(
+          extraGalleryUrls.join("\n")
+        )}</textarea>
+        <button type="button" onclick="renderImagePreview()" class="border px-3 py-2 rounded md:col-span-2">Atualizar preview de galeria</button>
+        <div id="image-preview" data-index="0" class="md:col-span-2"></div>
         <input id="weight" type="number" min="0" step="0.01" class="border p-2 rounded" placeholder="Peso (kg)" value="${
           product.weight ?? ""
         }">
@@ -654,6 +766,8 @@ function showProductForm(productId = "") {
       </div>
     </div>
   `;
+
+  renderImagePreview();
 }
 
 function toNullableNumber(value) {
@@ -663,11 +777,12 @@ function toNullableNumber(value) {
 }
 
 function readProductForm() {
+  const images = collectImageInput();
   return {
     name: document.getElementById("name")?.value.trim(),
     description: document.getElementById("description")?.value.trim() || null,
     price: Number(document.getElementById("price")?.value || 0),
-    image_url: document.getElementById("image_url")?.value.trim() || null,
+    image_url: images.primaryImageUrl || null,
     category: document.getElementById("category")?.value.trim(),
     stock: Number(document.getElementById("stock")?.value || 0),
     active: document.getElementById("active")?.checked || false,
@@ -677,7 +792,8 @@ function readProductForm() {
     weight: toNullableNumber(document.getElementById("weight")?.value),
     length: toNullableNumber(document.getElementById("length")?.value),
     width: toNullableNumber(document.getElementById("width")?.value),
-    height: toNullableNumber(document.getElementById("height")?.value)
+    height: toNullableNumber(document.getElementById("height")?.value),
+    images
   };
 }
 
@@ -711,7 +827,8 @@ function renderProductFormError(message) {
 }
 
 async function createProduct() {
-  const payload = readProductForm();
+  const formData = readProductForm();
+  const { images, ...payload } = formData;
   const validationError = validateProductPayload(payload);
   if (validationError) {
     renderProductFormError(validationError);
@@ -719,7 +836,7 @@ async function createProduct() {
   }
 
   try {
-    await callAdminApi("/api/admin/products", { payload });
+    await callAdminApi("/api/admin/products", { payload, images });
   } catch (error) {
     console.error("Erro criar produto:", error);
     renderProductFormError(error.message || "Erro ao criar produto.");
@@ -731,7 +848,8 @@ async function createProduct() {
 }
 
 async function updateProduct(id) {
-  const payload = readProductForm();
+  const formData = readProductForm();
+  const { images, ...payload } = formData;
   const validationError = validateProductPayload(payload);
   if (validationError) {
     renderProductFormError(validationError);
@@ -739,7 +857,7 @@ async function updateProduct(id) {
   }
 
   try {
-    await callAdminApi("/api/admin/product-update", { id, payload });
+    await callAdminApi("/api/admin/product-update", { id, payload, images });
   } catch (error) {
     console.error("Erro update produto:", error);
     renderProductFormError(error.message || "Erro ao atualizar produto.");
@@ -796,3 +914,4 @@ async function deleteProduct(id) {
 }
 
 init();
+
