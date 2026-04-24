@@ -1,4 +1,5 @@
 import { getSupabaseAdmin, requireAdmin } from "./_auth.js";
+import { normalizeImagesInput, replaceProductImages } from "./_product-images.js";
 
 function validateProductPayload(payload) {
   if (!payload || typeof payload !== "object") return "Payload invalido.";
@@ -23,6 +24,7 @@ export default async function handler(req, res) {
   if (!adminContext) return;
 
   const payload = req.body?.payload;
+  const images = req.body?.images || {};
   const validationError = validateProductPayload(payload);
   if (validationError) {
     return res.status(400).json({ error: validationError });
@@ -39,9 +41,26 @@ export default async function handler(req, res) {
     return res.status(409).json({ error: "Ja existe um produto com este nome." });
   }
 
-  const { error } = await supabaseAdmin.from("products").insert(payload);
+  const { primaryImageUrl } = normalizeImagesInput(images);
+  const productPayload = {
+    ...payload,
+    image_url: primaryImageUrl || payload.image_url || null
+  };
+
+  const { data: createdProduct, error } = await supabaseAdmin
+    .from("products")
+    .insert(productPayload)
+    .select("id")
+    .single();
   if (error) {
     return res.status(400).json({ error: error.message });
+  }
+
+  if (createdProduct?.id) {
+    const { error: imageError } = await replaceProductImages(supabaseAdmin, createdProduct.id, images);
+    if (imageError) {
+      return res.status(400).json({ error: imageError.message });
+    }
   }
 
   return res.status(200).json({ ok: true });

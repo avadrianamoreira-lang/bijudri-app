@@ -1,4 +1,5 @@
 import { getSupabaseAdmin, requireAdmin } from "./_auth.js";
+import { normalizeImagesInput, replaceProductImages } from "./_product-images.js";
 
 function validateProductPayload(payload) {
   if (!payload || typeof payload !== "object") return "Payload invalido.";
@@ -34,6 +35,7 @@ export default async function handler(req, res) {
 
   const id = req.body?.id;
   const payload = req.body?.payload;
+  const images = req.body?.images;
 
   if (!id) return res.status(400).json({ error: "ID em falta." });
   const validationError = validateProductPayload(payload);
@@ -53,9 +55,22 @@ export default async function handler(req, res) {
     }
   }
 
-  const { error } = await supabaseAdmin.from("products").update(payload).eq("id", id);
+  const updatePayload = { ...payload };
+  if (images) {
+    const { primaryImageUrl } = normalizeImagesInput(images);
+    updatePayload.image_url = primaryImageUrl || null;
+  }
+
+  const { error } = await supabaseAdmin.from("products").update(updatePayload).eq("id", id);
   if (error) {
     return res.status(400).json({ error: error.message });
+  }
+
+  if (images) {
+    const { error: imageError } = await replaceProductImages(supabaseAdmin, id, images);
+    if (imageError) {
+      return res.status(400).json({ error: imageError.message });
+    }
   }
 
   return res.status(200).json({ ok: true });
