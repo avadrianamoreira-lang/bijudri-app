@@ -38,7 +38,8 @@ export async function requireAdmin(req, res) {
       return null;
     }
 
-    if (!profile || profile.role !== "admin") {
+    const normalizedRole = String(profile?.role || "").trim().toLowerCase();
+    if (!profile || normalizedRole !== "admin") {
       res.status(403).json({ error: "Apenas admins podem executar esta acao." });
       return null;
     }
