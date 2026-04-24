@@ -26,52 +26,56 @@ function validateProductPayload(payload) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST" && req.method !== "PATCH") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const adminContext = await requireAdmin(req, res);
-  if (!adminContext) return;
-
-  const id = req.body?.id;
-  const payload = req.body?.payload;
-  const images = req.body?.images;
-
-  if (!id) return res.status(400).json({ error: "ID em falta." });
-  const validationError = validateProductPayload(payload);
-  if (validationError) return res.status(400).json({ error: validationError });
-
-  const supabaseAdmin = getSupabaseAdmin();
-
-  if ("name" in payload) {
-    const { data: existing } = await supabaseAdmin
-      .from("products")
-      .select("id")
-      .eq("name", payload.name)
-      .neq("id", id)
-      .limit(1);
-    if ((existing || []).length) {
-      return res.status(409).json({ error: "Ja existe outro produto com este nome." });
+  try {
+    if (req.method !== "POST" && req.method !== "PATCH") {
+      return res.status(405).json({ error: "Method not allowed" });
     }
-  }
 
-  const updatePayload = { ...payload };
-  if (images) {
-    const { primaryImageUrl } = normalizeImagesInput(images);
-    updatePayload.image_url = primaryImageUrl || null;
-  }
+    const adminContext = await requireAdmin(req, res);
+    if (!adminContext) return;
 
-  const { error } = await supabaseAdmin.from("products").update(updatePayload).eq("id", id);
-  if (error) {
-    return res.status(400).json({ error: error.message });
-  }
+    const id = req.body?.id;
+    const payload = req.body?.payload;
+    const images = req.body?.images;
 
-  if (images) {
-    const { error: imageError } = await replaceProductImages(supabaseAdmin, id, images);
-    if (imageError) {
-      return res.status(400).json({ error: imageError.message });
+    if (!id) return res.status(400).json({ error: "ID em falta." });
+    const validationError = validateProductPayload(payload);
+    if (validationError) return res.status(400).json({ error: validationError });
+
+    const supabaseAdmin = getSupabaseAdmin();
+
+    if ("name" in payload) {
+      const { data: existing } = await supabaseAdmin
+        .from("products")
+        .select("id")
+        .eq("name", payload.name)
+        .neq("id", id)
+        .limit(1);
+      if ((existing || []).length) {
+        return res.status(409).json({ error: "Ja existe outro produto com este nome." });
+      }
     }
-  }
 
-  return res.status(200).json({ ok: true });
+    const updatePayload = { ...payload };
+    if (images) {
+      const { primaryImageUrl } = normalizeImagesInput(images);
+      updatePayload.image_url = primaryImageUrl || null;
+    }
+
+    const { error } = await supabaseAdmin.from("products").update(updatePayload).eq("id", id);
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (images) {
+      const { error: imageError } = await replaceProductImages(supabaseAdmin, id, images);
+      if (imageError) {
+        return res.status(400).json({ error: imageError.message });
+      }
+    }
+
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ error: error?.message || "Erro interno no update produto." });
+  }
 }
