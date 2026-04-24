@@ -50,6 +50,7 @@ let selectedShipping = null;
 let shippingPrice = 0;
 let productsLoaded = false;
 let productImagesByProductId = {};
+let productTouchStartX = null;
 
 function getProductImages(productId) {
   const images = productImagesByProductId[String(productId)] || [];
@@ -63,6 +64,51 @@ function getProductImages(productId) {
 function getPrimaryProductImage(product) {
   const images = getProductImages(product.id);
   return images[0] || "";
+}
+
+function changeImage(index) {
+  if (!selectedProduct) return;
+  const images = getProductImages(selectedProduct.id);
+  if (!images.length) return;
+  activeImage = Math.max(0, Math.min(index, images.length - 1));
+  render();
+}
+
+function stepProductImage(delta) {
+  if (!selectedProduct) return;
+  const images = getProductImages(selectedProduct.id);
+  if (!images.length) return;
+  activeImage = (activeImage + delta + images.length) % images.length;
+  render();
+}
+
+function onProductImageTouchStart(event) {
+  productTouchStartX = event.touches?.[0]?.clientX ?? null;
+}
+
+function onProductImageTouchEnd(event) {
+  if (productTouchStartX == null) return;
+  const endX = event.changedTouches?.[0]?.clientX ?? null;
+  if (endX == null) return;
+  const delta = endX - productTouchStartX;
+  if (Math.abs(delta) > 40) {
+    stepProductImage(delta > 0 ? -1 : 1);
+  }
+  productTouchStartX = null;
+}
+
+function openImageZoom() {
+  const modal = document.getElementById("imageZoomModal");
+  const image = document.getElementById("imageZoomImage");
+  if (!modal || !image || !selectedProduct) return;
+  const images = getProductImages(selectedProduct.id);
+  image.src = images[activeImage] || "";
+  modal.classList.remove("hidden");
+}
+
+function closeImageZoom() {
+  const modal = document.getElementById("imageZoomModal");
+  if (modal) modal.classList.add("hidden");
 }
 
 // PRODUTOS EXEMPLO (substituímos depois pelos teus reais)
@@ -285,7 +331,16 @@ function renderProduct(app) {
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <img src="${images[activeImage] || ''}" class="w-full h-[450px] object-cover rounded-xl">
+          <div
+            class="relative"
+            ontouchstart="onProductImageTouchStart(event)"
+            ontouchend="onProductImageTouchEnd(event)">
+            <img src="${images[activeImage] || ''}" class="w-full h-[450px] object-cover rounded-xl cursor-zoom-in" onclick="openImageZoom()">
+            ${images.length > 1 ? `
+              <button onclick="stepProductImage(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 border rounded-full w-9 h-9">‹</button>
+              <button onclick="stepProductImage(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 border rounded-full w-9 h-9">›</button>
+            ` : ""}
+          </div>
         </div>
 
         <div>
@@ -313,6 +368,9 @@ function renderProduct(app) {
           ${cartMessage ? `<p class="mt-2 text-green-600 text-sm">${cartMessage}</p>` : ""}
         </div>
       </div>
+    </div>
+    <div id="imageZoomModal" class="hidden fixed inset-0 bg-black/85 z-[100] flex items-center justify-center p-4" onclick="closeImageZoom()">
+      <img id="imageZoomImage" src="" class="max-w-full max-h-full object-contain rounded" onclick="event.stopPropagation()">
     </div>
   `;
 }
